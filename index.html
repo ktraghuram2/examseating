@@ -305,7 +305,7 @@ S.Mallikarjun,L/Met,2</textarea>
    If GOOGLE_CLIENT_ID is empty, the app falls back to the local admin/password login. */
 const GCONF={
   GOOGLE_CLIENT_ID:'313569342387-alcp169pkvaggfausijtrhe3otun2fu9.apps.googleusercontent.com',           
- // e.g. '1234567890-abc.apps.googleusercontent.com'
+ // e.g. '1234567890-abc.apps.googleusercontent.com'   313569342387-alcp169pkvaggfausijtrhe3otun2fu9.apps.googleusercontent.com
   MASTER_EMAIL:'ktraghuram2@gmail.com',
   ALLOWLIST_FILE_ID:'1AJBMCSrYw_eYHFkuR0aNOGQHIhwpKBQG'            // filled after master saves allowlist first time
 };
@@ -1116,19 +1116,57 @@ function buildSeating(roomName,pattern,rooms,roomLists,rOv,cOv){
     for(const [r,c] of path)
       if(k<order.length&&seats[r][c].length===pass)seats[r][c].push(order[k++]);
   if(pattern==='GPTKGM'){
-    // GPTKGM Phase-Shift: for every column after the first, whenever a student has a
-    // SAME-GROUP neighbour to the left, swap that vertical pair (front <-> behind).
-    for(let s=0;s<perBench;s++)
-      for(let c=1;c<room.cols;c++)
-        for(let r=0;r+1<room.rows;r+=2){
-          const a=seats[r][c][s],left=seats[r][c-1][s];
-          if(a&&left&&a.scheme===left.scheme){
-            const b=seats[r+1][c][s];
-            seats[r][c][s]=b;seats[r+1][c][s]=a;
-            // drop possible undefined holes
-            if(seats[r][c][s]===undefined)seats[r][c].splice(s,1);
-          }
+    // GPTKGM Phase-Shift: no same group side-by-side (left neighbour) AND no same group
+    // within one bench (benchmates). Fix by swapping the vertical pair (front <-> behind).
+    const scheme=(r,c,s)=>seats[r][c][s]?seats[r][c][s].scheme:null;
+    const vswap=(r,c,s)=>{const t=seats[r][c][s];seats[r][c][s]=seats[r+1][c][s];seats[r+1][c][s]=t;};
+    for(let repair=0;repair<3;repair++){ // a few passes until stable
+      let fixed=0;
+      // (a) within-bench: benchmates must differ (only for 2/bench)
+      if(perBench===2)for(let c=0;c<room.cols;c++)for(let r=0;r+1<room.rows;r+=2){
+        if(scheme(r,c,1)&&scheme(r,c,1)===scheme(r,c,0)){vswap(r,c,1);fixed++;}
+        if(scheme(r+1,c,1)&&scheme(r+1,c,1)===scheme(r+1,c,0)){ // still equal after swap? swap back+skip
+          if(scheme(r,c,1)===scheme(r,c,0)){vswap(r,c,1);}
         }
+      }
+      // (b) side-by-side: same seat layer, adjacent columns
+      for(let s=0;s<perBench;s++)
+        for(let c=1;c<room.cols;c++)
+          for(let r=0;r+1<room.rows;r+=2){
+            if(scheme(r,c,s)&&scheme(r,c,s)===scheme(r,c-1,s)){vswap(r,c,s);fixed++;}
+            if(scheme(r+1,c,s)&&scheme(r+1,c,s)===scheme(r+1,c-1,s)&&scheme(r,c,s)!==scheme(r,c-1,s)){}
+          }
+      if(!fixed)break;
+    }
+    // final local-search: resolve any remaining violation by swapping with ANY other seat
+    // in the same layer that removes it without creating a new one
+    const bad=(r,c,s)=>{
+      const me=scheme(r,c,s);if(!me)return false;
+      if(perBench===2&&s===1&&scheme(r,c,0)===me)return true;
+      if(perBench===2&&s===0&&scheme(r,c,1)===me)return true;
+      if(c>0&&scheme(r,c-1,s)===me)return true;
+      if(c+1<room.cols&&scheme(r,c+1,s)===me)return true;
+      return false;
+    };
+    for(let guard=0;guard<room.rows*room.cols*perBench;guard++){
+      let v=null;
+      outer:for(let r=0;r<room.rows;r++)for(let c=0;c<room.cols;c++)for(let s=0;s<perBench;s++)
+        if(bad(r,c,s)){v={r,c,s};break outer;}
+      if(!v)break;
+      let done=false;
+      for(let r2=0;r2<room.rows&&!done;r2++)for(let c2=0;c2<room.cols&&!done;c2++){
+        if(r2===v.r&&c2===v.c)continue;
+        const a=seats[v.r][v.c][v.s],b=seats[r2][c2][v.s];
+        if(!b||b.scheme===a.scheme)continue;
+        seats[v.r][v.c][v.s]=b;seats[r2][c2][v.s]=a;
+        if(!bad(v.r,v.c,v.s)&&!bad(r2,c2,v.s))done=true;
+        else{seats[v.r][v.c][v.s]=a;seats[r2][c2][v.s]=b;}
+      }
+      if(!done)break; // genuinely unavoidable (e.g., one group dominates the room)
+    }
+    // clean undefined holes created by swaps at ragged ends
+    for(let r=0;r<room.rows;r++)for(let c=0;c<room.cols;c++)
+      seats[r][c]=seats[r][c].filter(x=>x!==undefined);
   }
   return {room,seats,perBench,groups,occupants,pattern};
 }
