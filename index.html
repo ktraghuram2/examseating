@@ -1,0 +1,1578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Exam Seating Plan &amp; Invigilation System</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+:root{--blue:#1a4f8b;--lt:#eef3fa;--bd:#c9d6e8;--grn:#1a7d3c;--red:#b02a2a;}
+*{box-sizing:border-box;font-family:Segoe UI,Arial,sans-serif;}
+body{margin:0;background:#f4f6f9;color:#1c2733;}
+header{background:var(--blue);color:#fff;padding:10px 18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;}
+header h1{font-size:16px;margin:0;}
+header .sub{font-size:12px;opacity:.85;}
+nav{display:flex;flex-wrap:wrap;background:#fff;border-bottom:2px solid var(--bd);position:sticky;top:0;z-index:5;}
+nav button{border:0;background:none;padding:10px 12px;font-size:12.5px;cursor:pointer;border-bottom:3px solid transparent;color:#345;}
+nav button.active{border-bottom-color:var(--blue);color:var(--blue);font-weight:700;background:var(--lt);}
+.page{display:none;padding:16px;max-width:1400px;margin:0 auto;}
+.page.active{display:block;}
+.card{background:#fff;border:1px solid var(--bd);border-radius:8px;padding:16px;margin-bottom:14px;}
+.card h2{margin:0 0 10px;font-size:15px;color:var(--blue);}
+label{font-size:12px;font-weight:600;display:block;margin:8px 0 3px;}
+input,select,textarea{padding:7px;border:1px solid var(--bd);border-radius:5px;font-size:13px;width:100%;}
+button.btn{background:var(--blue);color:#fff;border:0;padding:9px 16px;border-radius:6px;font-size:13px;cursor:pointer;margin:6px 6px 0 0;}
+button.btn.grn{background:var(--grn);} button.btn.red{background:var(--red);} button.btn.gray{background:#5a6b80;}
+table{border-collapse:collapse;width:100%;font-size:12px;background:#fff;}
+th,td{border:1px solid #9db2cc;padding:4px 6px;text-align:center;}
+th{background:var(--lt);}
+.scroll{overflow:auto;max-height:65vh;border:1px solid var(--bd);}
+.msg{padding:8px 10px;border-radius:6px;font-size:13px;margin:8px 0;display:none;}
+.msg.ok{background:#e6f6ec;color:var(--grn);display:block;}
+.msg.err{background:#fdeaea;color:var(--red);display:block;}
+.status{font-size:12px;color:#456;margin-top:6px;}
+#loginWrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a4f8b,#2e77c9);}
+#loginBox{background:#fff;padding:28px;border-radius:12px;width:340px;box-shadow:0 12px 30px rgba(0,0,0,.3);}
+#loginBox h1{font-size:17px;color:var(--blue);margin:0 0 4px;text-align:center;}
+#loginBox p{font-size:12px;color:#567;text-align:center;margin:0 0 12px;}
+.pwWrap{position:relative;}
+.pwWrap input{padding-right:38px;}
+.eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:17px;user-select:none;color:#567;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.pill{display:inline-block;background:var(--lt);border:1px solid var(--bd);border-radius:20px;padding:3px 10px;font-size:12px;margin:2px;}
+td input[type=number],td input[type=text]{padding:3px;font-size:12px;text-align:center;}
+td input[type=checkbox]{width:15px;height:15px;cursor:pointer;}
+.printhead{text-align:center;font-weight:700;}
+.modalBG{display:none;position:fixed;inset:0;background:rgba(10,25,50,.55);z-index:50;align-items:center;justify-content:center;}
+.modalBG.open{display:flex;}
+.modal{background:#fff;border-radius:10px;max-width:96vw;max-height:92vh;overflow:auto;padding:18px;width:1200px;}
+.modal h2{margin:0 0 10px;color:var(--blue);font-size:15px;}
+.avTable th,.avTable td{font-size:11px;padding:2px 4px;}
+.avMaster{background:#dbe8f7;}
+.badTot{background:#fdeaea!important;color:var(--red);font-weight:700;}
+.okTot{background:#e6f6ec!important;color:var(--grn);font-weight:700;}
+.seatCell input{width:96px;font-size:11px;}
+.benchPair{display:flex;gap:2px;justify-content:center;}
+.rankCol{}
+.planItem{display:inline-flex;align-items:center;gap:6px;background:var(--lt);border:1px solid var(--bd);border-radius:6px;padding:4px 8px;margin:3px;font-size:12px;}
+.planItem button{border:0;background:var(--red);color:#fff;border-radius:4px;padding:1px 7px;cursor:pointer;font-size:11px;}
+.signRow{height:70px;}
+@media print{
+  nav,header,.noprint,button,select,label,.status,.msg,textarea,.grid2,.grid3{display:none!important;}
+  .page{display:none;} .page.active{display:block;padding:0;}
+  .card{border:0;padding:0;margin:0 0 8px;}
+  .card h2{display:none;}
+  .scroll{max-height:none;overflow:visible;border:0;}
+  .rankCol,.statCol,.statRow{display:none!important;}
+  td input{border:none!important;background:none!important;font-size:12px;width:auto;}
+  td input[type=checkbox]{appearance:none;-webkit-appearance:none;border:none;width:14px;height:14px;}
+  td input[type=checkbox]:checked::before{content:"\2713";font-weight:bold;font-size:14px;}
+  body{background:#fff;}
+}
+</style>
+</head>
+<body>
+
+<div id="loginWrap">
+  <div id="loginBox">
+    <h1>Exam Seating Plan &amp;<br>Invigilation System</h1>
+    <p>Government Polytechnic, Kothagudem (046)</p>
+    <button class="btn grn" style="width:100%;margin-top:14px;font-size:15px" onclick="doGoogleLogin('signin')">Sign In with Google</button>
+    <button class="btn" style="width:100%;margin-top:8px" onclick="doGoogleLogin('register')">Register (new user) with Google</button>
+    <button class="btn gray" style="width:100%;margin-top:8px" onclick="doGoogleLogin('master')">Master Admin Login</button>
+    <p style="color:#789;font-size:12px;margin-top:10px">New users: Register once with your Gmail — the master admin will approve your access. After approval, use Sign In. Your settings are stored privately in your own Google Drive and restored on every login, on any device.</p>
+    <div id="lgMsg" class="msg err"></div>
+  </div>
+</div>
+
+<div id="appWrap" style="display:none">
+<header>
+  <div><h1>046 – GOVERNMENT POLYTECHNIC, KOTHAGUDEM</h1><div class="sub" id="hdrExam">Exam Seating Plan &amp; Invigilation System</div></div>
+  <div><span id="whoami" class="sub"></span> <button class="btn gray" onclick="logout()">Logout</button></div>
+</header>
+<nav id="tabs"></nav>
+
+<!-- 1 SETUP -->
+<div class="page" id="pg-setup">
+  <div class="card noprint"><h2>1. Exam Setup</h2>
+    <div class="grid2">
+      <div><label>College Name</label><input id="stCollege" value="046-GOVERNMENT POLYTECHNIC, KOTHAGUDEM"></div>
+      <div><label>Name of Examination</label><input id="stExam" value="MID-II -OCTOBER 2025 EXAMINATIONS"></div>
+    </div>
+    <div class="grid3">
+      <div><label>College Code</label><input id="stCode" value="46"></div>
+      <div><label>Principal Phone No</label><input id="stPhone" value="9912342046"></div>
+      <div><label>BNPL A/C line</label><input id="stBNPL" value="BNPL A/C NO:-10-1141,CUSTOMER ID-6000002149"></div>
+    </div>
+    <label>Bundle Slip — TO Address (speed post)</label>
+    <textarea id="stTo" rows="3">TO,  A.K.SRIKANTH  DEPUTY SECRETARY  POST EXAMINATIONS SECTION  S.V.BHAVAN, MASABTANK  HYDERABAD-500028</textarea>
+    <label>Bundle Slip — Addressed From / Board Name</label><input id="stBoard" value="SBTET TELANGANA">
+    <label>Equivalent Subjects (same content, different names/codes) — one group per line, comma separated</label>
+    <textarea id="stEquiv" rows="3" placeholder="Engineering Mathematics-II, Engg Mathematics 2, M-2
+Basic Electrical Engineering, Electrical Engineering Basics"></textarea>
+  </div>
+  <div class="card noprint" id="masterPanel" style="display:none"><h2>Master Admin — Allowed Users (Google emails)</h2>
+    <p class="status">Only these Gmail accounts can sign in with Google. One email per line. Each user's settings/session data are stored privately in their own Google Drive (hidden app data area).</p>
+    <h2 style="font-size:13px">Pending Registration Requests</h2>
+    <div id="reqList" class="status">Sign in as master to load requests.</div>
+    <button class="btn gray" onclick="renderMasterRequests()">Refresh Requests</button>
+    <hr>
+    <textarea id="stAllow" rows="5" placeholder="user1@gmail.com
+user2@gmail.com"></textarea>
+    <button class="btn grn" onclick="saveAllowlist()">Save Allowed Users (to your Drive)</button>
+    <div id="allowMsg" class="msg"></div>
+  </div>
+  <div class="card noprint"><h2>Rooms, Capacities &amp; Layout</h2>
+    <p class="status">One room per line: <b>RoomName,Capacity,BenchColumns,BenchRows</b>.</p>
+    <textarea id="stRooms" rows="7">DH3,48,4,6
+DH4,48,4,6
+LH1,48,4,6
+LH3,48,4,6
+LH4,48,4,6
+LH5,48,4,6
+LH6,48,4,6
+LH2,48,4,6
+LH7,48,4,6
+LH8,48,4,6
+VC,48,4,6
+CAD,48,4,6
+LH14,48,4,6
+LH15,48,4,6</textarea>
+  </div>
+  <div class="card noprint"><h2>Invigilation Staff List (with Seniority)</h2>
+    <p class="status">One per line: <b>Name,Designation,SeniorityRank</b>. Rank 1 = most senior (least duties).</p>
+    <textarea id="stStaff" rows="14">J.Harikrishna,L/Civ,2
+M.Srinu,L/Civ,3
+M.Saritha,L/Civ,3
+Md. Faiz Ahmed,L/Civ,3
+T.Anil,L/Civ,3
+P.Ramakrishna,L/EEE,2
+G.Swapna,L/EEE,3
+P.Haritha,L/EEE,3
+P.Naga Raju,L/EIE,2
+A.Ravi Kumar,L/EIE,3
+Ch.Ravi Kumar,L/EIE,3
+P.Aruna,L/EIE,3
+K.Silpa,L/CSE,3
+Bagam Krishna,L/Mech,2
+M.Krishna,L/Mech,3
+K.Sunitha,L/Mech,3
+DV Chawan,L/Mech,3
+N.Tarun Teja,L/Mech,3
+S.Mallikarjun,L/Met,2</textarea>
+    <button class="btn" onclick="saveSetup()">Save Setup</button>
+    <button class="btn gray" onclick="backupSettings()">Backup Settings (download file)</button>
+    <input type="file" id="restoreFile" accept=".json" style="display:none" onchange="restoreSettings(this)">
+    <button class="btn gray" onclick="restoreFile.click()">Restore Settings (from file)</button>
+    <div id="stMsg" class="msg"></div>
+  </div>
+</div>
+
+<!-- 2 UPLOAD -->
+<div class="page" id="pg-upload">
+  <div class="card noprint"><h2>2. Upload Data (Excel files)</h2>
+    <label>Student Nominal Roll (NR) files — one or many. Headers: pin, name, scheme, semester, branchcode, sub1…sub13</label>
+    <input type="file" id="fNR" multiple accept=".xlsx,.xls,.xlsm">
+    <label style="margin-top:14px">Time Table files — one or many. Headers: Scheme, Branch, Pcode, SubjectCode, SubjectName, ExamDate, SessionTime, ExamSession, Semester, ...</label>
+    <input type="file" id="fTT" multiple accept=".xlsx,.xls,.xlsm">
+    <button class="btn grn" onclick="importAll()">Import &amp; Process</button>
+    <div id="upMsg" class="msg"></div>
+    <pre class="status" id="upSummary" style="white-space:pre-wrap"></pre>
+  </div>
+  <div class="card noprint"><h2>Imported Data Diagnostics</h2>
+    <div id="upPreview" class="status">Nothing imported yet.</div>
+  </div>
+</div>
+
+<!-- 3 DayWise -->
+<div class="page" id="pg-daywise">
+  <div class="card"><h2>3. Day Wise Exam Strength</h2>
+    <div class="scroll" id="dweTable">Import data first.</div>
+    <button class="btn noprint" onclick="exportOne('DayWiseExam')">Export Excel</button>
+    <button class="btn gray noprint" onclick="window.print()">Print</button>
+  </div>
+</div>
+
+<!-- 4 InvDuties -->
+<div class="page" id="pg-invduties">
+  <div class="card"><h2>4. Invigilation Duty Sheet</h2>
+    <p class="status noprint">Needed per session = ceil(strength ÷ 24) + 1 buffer invigilator. Checkboxes editable. Rank column is hidden in print/export.</p>
+    <button class="btn gray noprint" onclick="openAvail()">Set Staff Availability (Leaves)</button>
+    <button class="btn noprint" onclick="buildInvDuties()">Re-Allot Duties Automatically</button>
+    <div class="scroll" id="invTable" style="margin-top:8px">Import data first.</div>
+    <button class="btn noprint" onclick="exportOne('InvDuties')">Export Excel</button>
+    <button class="btn gray noprint" onclick="printSection('invTable')">Print</button>
+  </div>
+</div>
+
+<!-- 5 Session -->
+<div class="page" id="pg-session">
+  <div class="card noprint"><h2>5. Select Exam Date &amp; Session</h2>
+    <div class="grid2">
+      <div><label>Date</label><select id="selDate" onchange="fillSessions()"></select></div>
+      <div><label>Session</label><select id="selSes" onchange="showTime()"></select></div>
+    </div>
+    <div class="status" id="selTime"></div>
+    <button class="btn grn" onclick="applySession()">Apply — Get Subjects, Pins &amp; Room Allocation</button>
+    <div id="sesMsg" class="msg"></div>
+  </div>
+  <div class="card"><h2>Subjects in this session</h2><div class="scroll" id="frTable">–</div>
+    <button class="btn noprint" onclick="printSection('frTable')">Print</button></div>
+  <div class="card"><h2>Matched Pin Numbers</h2><div class="scroll" id="mpTable">–</div>
+    <button class="btn noprint" onclick="printSection('mpTable')">Print</button></div>
+  <div class="card noprint"><button class="btn" onclick="exportSubjectsPins()">Export Excel — Subjects + Matched Pins (2 sheets, 1 file)</button></div>
+</div>
+
+<!-- 6 RoomInputs -->
+<div class="page" id="pg-rooms">
+  <div class="card"><h2>6. Room Inputs (editable — remembered per semester group)</h2>
+    <p class="status noprint">Each scheme-branch-semester group keeps its saved plan for ALL its days/sessions — feed once.</p>
+    <div class="scroll" id="riTable">Apply a session first (Tab 5).</div>
+    <button class="btn noprint" onclick="saveRoomPlan()">Save Plan for these Semester Groups</button>
+    <button class="btn grn noprint" onclick="generateOutputs()">Generate Outputs for this Session</button>
+    <button class="btn noprint" onclick="exportOne('RoomInputs')">Export Excel</button>
+    <button class="btn gray noprint" onclick="printSection('riTable')">Print</button>
+    <div id="riMsg" class="msg"></div>
+    <div class="noprint"><h2 style="margin-top:14px;font-size:13px;color:var(--blue)">Saved Plans</h2><div id="planList" class="status">No plans saved yet.</div></div>
+  </div>
+</div>
+
+<!-- 7 Seating -->
+<div class="page" id="pg-seating">
+  <div class="card noprint"><h2>7. Seating Arrangement — Room Configuration</h2>
+    <p class="status">Set bench Rows × Columns and Seating Type for each room, then Generate. If a room's strength &gt; benches → 2 students per bench automatically.</p>
+    <div id="seatCfg">Generate outputs first (Tab 6).</div>
+    <button class="btn grn" onclick="generateAllSeating()">Generate Seating For All Rooms</button>
+  </div>
+  <div class="card">
+    <div id="allSeats" class="scroll" style="max-height:75vh">–</div>
+    <button class="btn noprint" onclick="exportAllSeating()">Export ALL Rooms Seating (one Excel, sheet per room)</button>
+    <button class="btn gray noprint" onclick="printAllSeating()">Print All (each room on a new page)</button>
+  </div>
+</div>
+
+<!-- 8 Outputs -->
+<div class="page" id="pg-outputs">
+  <div class="card"><h2>Display Board</h2><div class="scroll" id="dbTable">–</div>
+    <button class="btn noprint" onclick="exportOne('DisplayBoard')">Export Excel</button>
+    <button class="btn gray noprint" onclick="printSection('dbTable')">Print</button></div>
+  <div class="card"><h2>Room Wise List</h2><div class="scroll" id="rwTable">–</div>
+    <button class="btn noprint" onclick="exportOne('RoomWiseList')">Export Excel</button>
+    <button class="btn gray noprint" onclick="printSection('rwTable')">Print</button></div>
+  <div class="card"><h2>Room Wise Duty Sheet</h2><div class="scroll" id="rdTable">–</div>
+    <button class="btn noprint" onclick="exportOne('RoomDuty')">Export Excel</button>
+    <button class="btn gray noprint" onclick="printSection('rdTable')">Print</button></div>
+  <div class="card"><h2>Bundle Slip (one per session)</h2><div class="scroll" id="bsTable">–</div>
+    <button class="btn noprint" onclick="exportOne('BundleSlip')">Export Excel</button>
+    <button class="btn gray noprint" onclick="printSection('bsTable')">Print</button></div>
+  <div class="card"><h2>Absentees Statement (one per session — count left blank)</h2><div class="scroll" id="asTable">–</div>
+    <button class="btn noprint" onclick="exportOne('AbsentSlip')">Export Excel</button>
+    <button class="btn gray noprint" onclick="printSection('asTable')">Print</button></div>
+  <div class="card noprint"><h2>Exports</h2>
+    <button class="btn grn" onclick="exportSessionWorkbook()">⬇ Export THIS Session — ONE Excel file (all sheets inside)</button>
+    <button class="btn gray" onclick="window.print()">Print This Page</button>
+    <hr>
+    <p class="status">Master export: ZIP with a folder per date-session, each containing ONE workbook (DisplayBoard, RoomWiseList, RoomDuty, Seating per room, BundleSlip, AbsentSlip as separate sheets inside), plus DayWiseExam and InvDuties workbooks at top level. Uses saved semester plans; auto-allocates the rest.</p>
+    <button class="btn grn" onclick="masterExport()">⬇ Generate ALL Sessions ZIP</button>
+    <div id="meMsg" class="msg"></div>
+  </div>
+</div>
+</div>
+
+<!-- Availability Modal -->
+<div class="modalBG" id="avModal">
+  <div class="modal">
+    <h2>Staff Availability — untick when staff is on leave</h2>
+    <p class="status">Blue cell = per-staff master for that date: unticking it unticks all that day's sessions for that staff only. Saved permanently for this browser.</p>
+    <div id="avBody" class="scroll" style="max-height:60vh">Import Time Table first.</div>
+    <button class="btn grn" onclick="saveAvail()">Save &amp; Re-Allot Duties</button>
+    <button class="btn gray" onclick="avModal.classList.remove('open')">Close</button>
+  </div>
+</div>
+
+<script>
+/* ================= GOOGLE / HOSTING CONFIG =================
+   To turn this file into a real multi-user website:
+   1. Host this single file on any static host (Netlify Drop / GitHub Pages) -> that gives the public URL.
+   2. In Google Cloud Console create an OAuth 2.0 Client ID (Web application),
+      add your site URL to "Authorized JavaScript origins",
+      enable the Google Drive API, and paste the Client ID below.
+   3. Set MASTER_EMAIL to the master admin Gmail.
+   4. Master signs in first and saves the Allowed Users list; its Drive file ID is
+      created automatically and shown — paste it into ALLOWLIST_FILE_ID and re-upload the file.
+   If GOOGLE_CLIENT_ID is empty, the app falls back to the local admin/password login. */
+const GCONF={
+  GOOGLE_CLIENT_ID:'313569342387-alcp169pkvaggfausijtrhe3otun2fu9.apps.googleusercontent.com',           
+ // e.g. '1234567890-abc.apps.googleusercontent.com'
+  MASTER_EMAIL:'ktraghuram2@gmail.com',
+  ALLOWLIST_FILE_ID:''            // filled after master saves allowlist first time
+};
+let gAuth={token:null,email:null,isMaster:false};
+function googleConfigured(){return !!GCONF.GOOGLE_CLIENT_ID;}
+function loadGIS(){return new Promise(res=>{if(window.google&&google.accounts)return res();const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.onload=res;document.head.appendChild(s);});}
+async function signInGoogle(){
+  await loadGIS();
+  return new Promise((resolve,reject)=>{
+    const tc=google.accounts.oauth2.initTokenClient({
+      client_id:GCONF.GOOGLE_CLIENT_ID,
+      scope:'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly openid email profile',
+      callback:async t=>{
+        if(t.error)return reject(t);
+        gAuth.token=t.access_token;
+        const ui=await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:'Bearer '+gAuth.token}}).then(r=>r.json());
+        gAuth.email=(ui.email||'').toLowerCase();
+        gAuth.isMaster=gAuth.email===GCONF.MASTER_EMAIL.toLowerCase();
+        resolve();
+      }});
+    tc.requestAccessToken();
+  });
+}
+async function driveFind(name,appData){
+  const q=encodeURIComponent("name='"+name+"' and trashed=false");
+  const spaces=appData?'appDataFolder':'drive';
+  const r=await fetch('https://www.googleapis.com/drive/v3/files?spaces='+spaces+'&q='+q+'&fields=files(id,name)',{headers:{Authorization:'Bearer '+gAuth.token}}).then(x=>x.json());
+  return (r.files&&r.files[0])?r.files[0].id:null;
+}
+async function driveRead(id){
+  const r=await fetch('https://www.googleapis.com/drive/v3/files/'+id+'?alt=media',{headers:{Authorization:'Bearer '+gAuth.token}});
+  if(!r.ok)return null;return r.text();
+}
+async function driveWrite(id,name,content,appData){
+  const meta=id?{}:{name,parents:appData?['appDataFolder']:[]};
+  const boundary='-------314159265358979323846';
+  const body='--'+boundary+'\r\nContent-Type: application/json\r\n\r\n'+JSON.stringify(meta)
+    +'\r\n--'+boundary+'\r\nContent-Type: application/json\r\n\r\n'+content+'\r\n--'+boundary+'--';
+  const url='https://www.googleapis.com/upload/drive/v3/files'+(id?'/'+id:'')+'?uploadType=multipart';
+  const r=await fetch(url,{method:id?'PATCH':'POST',headers:{Authorization:'Bearer '+gAuth.token,'Content-Type':'multipart/related; boundary='+boundary},body}).then(x=>x.json());
+  return r.id;
+}
+let driveDocId=null,driveSaveTimer=null,driveCache={};
+async function driveLoadSettings(){
+  try{
+    driveDocId=await driveFind('seating_app_settings.json',true);
+    if(driveDocId){const t=await driveRead(driveDocId);if(t)driveCache=JSON.parse(t);}
+  }catch(e){console.warn('Drive load failed',e);}
+}
+function driveScheduleSave(){
+  if(!gAuth.token)return;
+  clearTimeout(driveSaveTimer);
+  driveSaveTimer=setTimeout(async()=>{
+    try{driveDocId=await driveWrite(driveDocId,'seating_app_settings.json',JSON.stringify(driveCache),true);}
+    catch(e){console.warn('Drive save failed',e);}
+  },1500);
+}
+async function saveAllowlist(){
+  if(!gAuth.isMaster){allowMsg.textContent='Only the master admin can save this list.';allowMsg.className='msg err';return;}
+  try{
+    const content=JSON.stringify({allowed:stAllow.value.split('\n').map(x=>x.trim().toLowerCase()).filter(Boolean)});
+    let id=GCONF.ALLOWLIST_FILE_ID||await driveFind('seating_app_allowlist.json',false);
+    id=await driveWrite(id,'seating_app_allowlist.json',content,false);
+    // make readable by anyone with the link so other users' app instances can check it
+    await fetch('https://www.googleapis.com/drive/v3/files/'+id+'/permissions',{method:'POST',headers:{Authorization:'Bearer '+gAuth.token,'Content-Type':'application/json'},body:JSON.stringify({role:'reader',type:'anyone'})});
+    allowMsg.innerHTML='Saved. Allowlist file ID: <b>'+id+'</b>'+(GCONF.ALLOWLIST_FILE_ID?'':' — paste this into GCONF.ALLOWLIST_FILE_ID inside the HTML file and re-upload the site.');
+    allowMsg.className='msg ok';
+  }catch(e){allowMsg.textContent='Error: '+e.message;allowMsg.className='msg err';}
+}
+async function checkAllowed(email){
+  if(email===GCONF.MASTER_EMAIL.toLowerCase())return true;
+  if(!GCONF.ALLOWLIST_FILE_ID)return false; // users need master approval; register first
+  try{
+    const r=await fetch('https://www.googleapis.com/drive/v3/files/'+GCONF.ALLOWLIST_FILE_ID+'?alt=media',{headers:{Authorization:'Bearer '+gAuth.token}});
+    const d=await r.json();
+    return (d.allowed||[]).includes(email);
+  }catch(e){return false;}
+}
+/* ================= PERSISTENT STORAGE ================= */
+const store={
+  async get(k){
+    if(gAuth.token&&k in driveCache)return driveCache[k];
+    try{if(window.storage){const r=await window.storage.get(k);return r?JSON.parse(r.value):null;}}catch(e){}
+    try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){}return null;},
+  async set(k,v){
+    if(gAuth.token){driveCache[k]=v;driveScheduleSave();}
+    const s=JSON.stringify(v);
+    try{if(window.storage){await window.storage.set(k,s);return;}}catch(e){}
+    try{localStorage.setItem(k,s);}catch(e){}}
+};
+
+/* ================= STATE ================= */
+const S={students:[],boardTT:[],timeTable:[],dayWise:[],sessions:[],invMatrix:null,avail:{},roomPlans:{},filtered:[],matched:[],roomAlloc:null,outputs:null,sel:{date:'',ses:'',time:''}};
+const SES_ORDER=['FN','F1','AN','A1'];
+function sesRank(s){const i=SES_ORDER.indexOf(String(s).toUpperCase());return i<0?99:i;}
+function dateKey(d){const m=String(d).trim().match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);return m?m[3]+m[2].padStart(2,'0')+m[1].padStart(2,'0'):String(d);}
+function semKey(header){return header.split('-').slice(0,3).join('-');}
+
+/* ================= LOGIN ================= */
+async function submitRegistrationRequest(){
+  // create a small request file in the USER's Drive and share it (read) with the master admin
+  const name='seating_app_request_'+gAuth.email.replace(/[^a-z0-9]/g,'_')+'.json';
+  let id=await driveFind(name,false);
+  id=await driveWrite(id,name,JSON.stringify({email:gAuth.email,requested:new Date().toISOString()}),false);
+  try{
+    await fetch('https://www.googleapis.com/drive/v3/files/'+id+'/permissions?sendNotificationEmail=true',{
+      method:'POST',headers:{Authorization:'Bearer '+gAuth.token,'Content-Type':'application/json'},
+      body:JSON.stringify({role:'reader',type:'user',emailAddress:GCONF.MASTER_EMAIL})});
+  }catch(e){console.warn('share failed',e);}
+}
+async function masterListRequests(){
+  const q=encodeURIComponent("name contains 'seating_app_request_' and sharedWithMe and trashed=false");
+  const r=await fetch('https://www.googleapis.com/drive/v3/files?q='+q+'&fields=files(id,name,owners(emailAddress))',{headers:{Authorization:'Bearer '+gAuth.token}}).then(x=>x.json());
+  return (r.files||[]).map(f=>({id:f.id,email:(f.owners&&f.owners[0]?f.owners[0].emailAddress:f.name.replace('seating_app_request_','').replace('.json','').replace(/_/g,'.')).toLowerCase()}));
+}
+async function renderMasterRequests(){
+  try{
+    const reqs=await masterListRequests();
+    const allowed=stAllow.value.split('\n').map(x=>x.trim().toLowerCase()).filter(Boolean);
+    const pending=reqs.filter(r=>!allowed.includes(r.email));
+    reqList.innerHTML=pending.length
+      ? pending.map(r=>'<div class="planItem" style="display:flex;justify-content:space-between;width:100%;margin:4px 0"><span>'+r.email+'</span><span><button class="btn grn" style="padding:3px 10px;margin:0 4px" onclick="approveUser(\''+r.email+'\')">Approve</button></span></div>').join('')
+      : 'No pending registration requests.';
+  }catch(e){reqList.innerHTML='Could not load requests: '+e.message;}
+}
+async function approveUser(email){
+  const list=stAllow.value.split('\n').map(x=>x.trim()).filter(Boolean);
+  if(!list.map(x=>x.toLowerCase()).includes(email))list.push(email);
+  stAllow.value=list.join('\n');
+  await saveAllowlist();
+  renderMasterRequests();
+}
+async function doGoogleLogin(mode){
+  if(!googleConfigured()){lgMsg.textContent='Google sign-in is not configured yet on this site (GOOGLE_CLIENT_ID empty in GCONF). The site owner must complete the Google Cloud setup first.';lgMsg.className='msg err';return;}
+  try{
+    await signInGoogle();
+    if(mode==='master'&&!gAuth.isMaster){
+      lgMsg.textContent=gAuth.email+' is not the master admin account.';lgMsg.className='msg err';
+      gAuth={token:null,email:null,isMaster:false};return;
+    }
+    const ok=await checkAllowed(gAuth.email);
+    if(!ok&&!gAuth.isMaster){
+      if(mode==='register'){
+        await submitRegistrationRequest();
+        lgMsg.textContent='Registration request sent for '+gAuth.email+'. The master admin will approve your access — try Sign In later.';
+        lgMsg.className='msg ok';
+      }else{
+        lgMsg.textContent=gAuth.email+' is not approved yet. Use Register to request access from the master admin.';
+        lgMsg.className='msg err';
+      }
+      gAuth={token:null,email:null,isMaster:false};return;
+    }
+    await driveLoadSettings();
+    loginWrap.style.display='none';appWrap.style.display='block';
+    whoami.textContent='User: '+gAuth.email+(gAuth.isMaster?' (MASTER)':'');
+    if(gAuth.isMaster){
+      masterPanel.style.display='block';
+      try{const id=GCONF.ALLOWLIST_FILE_ID||await driveFind('seating_app_allowlist.json',false);
+        if(id){const t=await driveRead(id);if(t){const d=JSON.parse(t);stAllow.value=(d.allowed||[]).join('\n');}}}catch(e){}
+      renderMasterRequests();
+    }
+    const av=await store.get('staff_avail');if(av)S.avail=av;
+    const rp=await store.get('room_plans');if(rp)S.roomPlans=rp;
+    const sv=await store.get('saved_sessions');if(sv)S.savedSessions=sv;
+    const su=await store.get('setup');if(su)applySetupObj(su);
+    renderPlanList();
+  }catch(e){lgMsg.textContent='Google sign-in failed: '+(e.message||JSON.stringify(e));lgMsg.className='msg err';}
+}
+function logout(){location.reload();}
+function setupObj(){return{college:stCollege.value,exam:stExam.value,code:stCode.value,phone:stPhone.value,bnpl:stBNPL.value,to:stTo.value,board:stBoard.value,rooms:stRooms.value,staff:stStaff.value,equiv:stEquiv.value};}
+function applySetupObj(su){stCollege.value=su.college??stCollege.value;stExam.value=su.exam??stExam.value;stCode.value=su.code??stCode.value;stPhone.value=su.phone??stPhone.value;stBNPL.value=su.bnpl??stBNPL.value;stTo.value=su.to??stTo.value;stBoard.value=su.board??stBoard.value;stRooms.value=su.rooms??stRooms.value;stStaff.value=su.staff??stStaff.value;stEquiv.value=su.equiv??stEquiv.value;hdrExam.textContent=su.exam??hdrExam.textContent;}
+function backupSettings(){
+  const data={setup:setupObj(),staff_avail:S.avail,room_plans:S.roomPlans,saved_sessions:S.savedSessions||[]};
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
+  a.download='seating_app_settings.json';a.click();
+}
+function restoreSettings(inp){
+  const f=inp.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=async e=>{try{const d=JSON.parse(e.target.result);
+    if(d.setup)applySetupObj(d.setup);
+    if(d.staff_avail)S.avail=d.staff_avail;
+    if(d.room_plans)S.roomPlans=d.room_plans;
+    if(d.saved_sessions)S.savedSessions=d.saved_sessions;
+    await store.set('setup',setupObj());await store.set('staff_avail',S.avail);await store.set('room_plans',S.roomPlans);await store.set('saved_sessions',S.savedSessions||[]);
+    renderPlanList();stMsg.textContent='Settings restored and saved.';stMsg.className='msg ok';
+  }catch(x){stMsg.textContent='Invalid settings file.';stMsg.className='msg err';}};
+  r.readAsText(f);
+}
+
+/* ================= TABS ================= */
+const TABS=[['setup','1. Setup'],['upload','2. Upload'],['daywise','3. Day Wise'],['invduties','4. Inv Duties'],['session','5. Date/Session'],['rooms','6. Room Inputs'],['seating','7. Seating'],['outputs','8. Outputs']];
+TABS.forEach(([id,lb],i)=>{const b=document.createElement('button');b.textContent=lb;b.onclick=()=>go(id);if(i===0)b.classList.add('active');tabs.appendChild(b);});
+function go(id){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('pg-'+id).classList.add('active');[...tabs.children].forEach((b,i)=>b.classList.toggle('active',TABS[i][0]===id));}
+go('setup');
+
+/* ================= SETUP ================= */
+function getRooms(){return stRooms.value.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{const p=l.split(',');return{name:p[0].trim(),cap:parseInt(p[1])||48,cols:parseInt(p[2])||4,rows:parseInt(p[3])||6};});}
+function getStaff(){return stStaff.value.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{const p=l.split(',');return{name:p[0].trim(),desig:(p[1]||'').trim(),rank:parseInt(p[2])||3};});}
+async function saveSetup(){
+  await store.set('setup',setupObj());
+  stMsg.textContent='Setup saved permanently (this browser). Rooms: '+getRooms().length+', Staff: '+getStaff().length;stMsg.className='msg ok';
+  hdrExam.textContent=stExam.value;
+  if(S.sessions.length)buildInvDuties();
+}
+
+/* ============ Availability ============ */
+function avKey(n,d,s){return n+'|'+d+'|'+s;}
+function isAvail(n,d,s){return S.avail[avKey(n,d,s)]!==false;}
+function openAvail(){
+  avModal.classList.add('open');
+  if(!S.sessions.length){avBody.innerHTML='Import Time Table first.';return;}
+  const staff=getStaff();
+  const dates=[...new Set(S.sessions.map(s=>s.date))];
+  const byDate={};dates.forEach(d=>byDate[d]=S.sessions.filter(s=>s.date===d).map(s=>s.ses));
+  let h='<table class="avTable"><tr><th rowspan="2">Staff (Designation)</th>';
+  dates.forEach(d=>h+='<th class="avMaster">Day</th><th colspan="'+byDate[d].length+'">'+d+'</th>');
+  h+='</tr><tr>';
+  dates.forEach(d=>{h+='<th class="avMaster"><small>All</small></th>';byDate[d].forEach(s=>h+='<th>'+s+'</th>');});
+  h+='</tr>';
+  staff.forEach(st=>{
+    h+='<tr><td style="text-align:left">'+st.name+' ('+st.desig+')</td>';
+    dates.forEach(d=>{
+      const allOn=byDate[d].every(s=>isAvail(st.name,d,s));
+      h+='<td class="avMaster"><input type="checkbox" class="dayMaster" data-n="'+st.name+'" data-d="'+d+'" '+(allOn?'checked':'')+' onchange="toggleStaffDay(this)"></td>';
+      byDate[d].forEach(s=>{h+='<td><input type="checkbox" class="avCB" data-n="'+st.name+'" data-d="'+d+'" data-s="'+s+'" '+(isAvail(st.name,d,s)?'checked':'')+' onchange="syncMaster(this)"></td>';});
+    });
+    h+='</tr>';
+  });
+  avBody.innerHTML=h+'</table>';
+}
+function toggleStaffDay(cb){document.querySelectorAll('.avCB[data-n="'+CSS.escape(cb.dataset.n)+'"][data-d="'+cb.dataset.d+'"]').forEach(x=>x.checked=cb.checked);}
+function syncMaster(cb){
+  const boxes=[...document.querySelectorAll('.avCB[data-n="'+CSS.escape(cb.dataset.n)+'"][data-d="'+cb.dataset.d+'"]')];
+  const m=document.querySelector('.dayMaster[data-n="'+CSS.escape(cb.dataset.n)+'"][data-d="'+cb.dataset.d+'"]');
+  if(m)m.checked=boxes.every(x=>x.checked);
+}
+async function saveAvail(){
+  document.querySelectorAll('.avCB').forEach(cb=>{S.avail[avKey(cb.dataset.n,cb.dataset.d,cb.dataset.s)]=cb.checked;});
+  await store.set('staff_avail',S.avail);
+  avModal.classList.remove('open');buildInvDuties();go('invduties');
+}
+
+/* ================= IMPORT ================= */
+function readWB(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>{try{res(XLSX.read(new Uint8Array(e.target.result),{type:'array'}));}catch(x){rej(x);}};r.onerror=rej;r.readAsArrayBuffer(file);});}
+function sheetRows(wb){return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:''});}
+function fmtDate(v){
+  if(v==null||v==='')return '';
+  if(typeof v==='number'){const d=XLSX.SSF.parse_date_code(v);if(d)return String(d.d).padStart(2,'0')+'/'+String(d.m).padStart(2,'0')+'/'+d.y;}
+  if(v instanceof Date)return String(v.getDate()).padStart(2,'0')+'/'+String(v.getMonth()+1).padStart(2,'0')+'/'+v.getFullYear();
+  v=String(v).trim();
+  let m=v.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);if(m)return m[3].padStart(2,'0')+'/'+m[2].padStart(2,'0')+'/'+m[1];
+  m=v.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  if(m){const y=m[3].length===2?'20'+m[3]:m[3];return m[1].padStart(2,'0')+'/'+m[2].padStart(2,'0')+'/'+y;}
+  return v;
+}
+async function importAll(){
+  try{
+    upMsg.className='msg';upMsg.textContent='';
+    const nrFiles=fNR.files,ttFiles=fTT.files;
+    if(!nrFiles.length||!ttFiles.length){upMsg.textContent='Please select NR file(s) and Time Table file(s).';upMsg.className='msg err';return;}
+    S.students=[];let summ='';
+    for(const f of nrFiles){
+      const rows=sheetRows(await readWB(f));
+      const hdr=rows[0].map(h=>String(h).trim().toLowerCase());
+      const idx=n=>hdr.indexOf(n);
+      if(idx('pin')<0||idx('scheme')<0||idx('branchcode')<0){summ+=f.name+': HEADER MISMATCH – skipped\n';continue;}
+      let c=0;
+      for(let i=1;i<rows.length;i++){const r=rows[i];const pin=String(r[idx('pin')]??'').trim();if(!pin)continue;
+        const subs=[];for(let k=1;k<=13;k++){const j=idx('sub'+k);subs.push(j>=0?String(r[j]??'').trim():'');}
+        S.students.push({pin,name:String(r[idx('name')]??'').trim(),scheme:String(r[idx('scheme')]??'').trim(),semester:String(r[idx('semester')]??'').trim(),branchcode:String(r[idx('branchcode')]??'').trim(),subs});c++;}
+      summ+=f.name+': '+c+' students\n';
+    }
+    S.boardTT=[];
+    const need=['Scheme','Branch','Pcode','SubjectCode','SubjectName','ExamDate','SessionTime','ExamSession'];
+    for(const tf of ttFiles){
+      const rows=sheetRows(await readWB(tf));
+      const hdr=rows[0].map(h=>String(h).trim());
+      const ix={};need.concat(['Semester']).forEach(n=>ix[n]=hdr.findIndex(h=>h.toLowerCase()===n.toLowerCase()));
+      if(need.some(n=>ix[n]<0)){summ+=tf.name+': TIME TABLE HEADER MISMATCH – skipped\n';continue;}
+      let c=0;
+      for(let i=1;i<rows.length;i++){const r=rows[i];const sch=String(r[ix['Scheme']]??'').trim();if(!sch)continue;
+        S.boardTT.push({Scheme:sch,Branch:String(r[ix['Branch']]??'').trim(),Pcode:String(r[ix['Pcode']]??'').trim(),SubjectCode:String(r[ix['SubjectCode']]??'').trim(),SubjectName:String(r[ix['SubjectName']]??'').trim(),ExamDate:fmtDate(r[ix['ExamDate']]),SessionTime:String(r[ix['SessionTime']]??'').trim(),ExamSession:String(r[ix['ExamSession']]??'').trim().toUpperCase(),Semester:String(r[ix['Semester']]??'').trim()});c++;}
+      summ+=tf.name+': '+c+' time table rows\n';
+    }
+    summ+='Time Table total: '+S.boardTT.length+' rows';
+    upSummary.textContent=summ;
+    buildTimeTable();buildDayWise();buildInvDuties();fillDates();
+    const stuBr=[...new Set(S.students.map(s=>s.branchcode))];
+    const ttBr=[...new Set(S.boardTT.map(r=>r.Branch))];
+    const missing=stuBr.filter(b=>!ttBr.includes(b));
+    upPreview.innerHTML='<span class="pill">Students: '+S.students.length+'</span><span class="pill">TT rows: '+S.boardTT.length+'</span><span class="pill">Sessions: '+S.sessions.length+'</span><span class="pill">Branches: '+stuBr.join(', ')+'</span>'
+      +(missing.length?'<div class="msg err" style="display:block">Branches in NR but NOT in Time Table: '+missing.join(', ')+'</div>':'')
+      +'<div class="status">'+S.sessions.map(c=>c.date+' '+c.ses+' (str '+c.total+', need '+c.need+')').join(' | ')+'</div>';
+    upMsg.textContent='Import complete.';upMsg.className='msg ok';go('daywise');
+  }catch(e){upMsg.textContent='Error: '+e.message;upMsg.className='msg err';console.error(e);}
+}
+
+/* ============ Time table & day wise ============ */
+function buildTimeTable(){
+  const branches=new Set(S.students.map(s=>s.branchcode));
+  S.timeTable=S.boardTT.filter(r=>branches.has(r.Branch));
+  S.timeTable.sort((a,b)=>dateKey(a.ExamDate).localeCompare(dateKey(b.ExamDate))||sesRank(a.ExamSession)-sesRank(b.ExamSession)||a.Branch.localeCompare(b.Branch));
+}
+function matchStudents(scheme,branch,sem,subcode){return S.students.filter(s=>s.scheme===scheme&&s.branchcode===branch&&s.semester===sem&&s.subs.includes(subcode));}
+function buildDayWise(){
+  S.dayWise=[];
+  for(const r of S.timeTable){
+    const n=matchStudents(r.Scheme,r.Branch,r.Semester,r.SubjectCode).length;
+    if(n>0)S.dayWise.push({dateSes:r.ExamDate+' - '+r.ExamSession,date:r.ExamDate,ses:r.ExamSession,time:r.SessionTime,pcode:r.Pcode,scheme:r.Branch+'-'+r.Scheme,fullScheme:r.Scheme,branch:r.Branch,sem:r.Semester,subcode:r.SubjectCode,subname:r.SubjectName,strength:n});
+  }
+  const map={};
+  for(const d of S.dayWise){const k=d.date+'|'+d.ses;
+    if(!map[k])map[k]={date:d.date,ses:d.ses,time:d.time,total:0};
+    map[k].total+=d.strength;}
+  S.sessions=Object.values(map).sort((a,b)=>dateKey(a.date).localeCompare(dateKey(b.date))||sesRank(a.ses)-sesRank(b.ses));
+  S.sessions.forEach(c=>c.need=Math.max(Math.ceil(c.total/24),1)+1); // +1 buffer invigilator
+  S.dayWise.sort((a,b)=>dateKey(a.date).localeCompare(dateKey(b.date))||sesRank(a.ses)-sesRank(b.ses));
+  let html='<table><tr><th colspan="8" class="printhead">'+stCollege.value+'</th></tr><tr><th colspan="8" class="printhead">'+stExam.value+' — DAY WISE STRENGTH</th></tr><tr><th>S.No</th><th>Exam Date & Ses</th><th>Paper Code</th><th>Scheme</th><th>Subject Code</th><th>Subject Name</th><th>Strength</th><th>Total</th></tr>';
+  let i=0;
+  while(i<S.dayWise.length){
+    let j=i;while(j+1<S.dayWise.length&&S.dayWise[j+1].dateSes===S.dayWise[i].dateSes)j++;
+    const tot=S.dayWise.slice(i,j+1).reduce((a,r)=>a+r.strength,0);
+    for(let k=i;k<=j;k++){const r=S.dayWise[k];
+      html+='<tr><td>'+(k+1)+'</td>';
+      if(k===i)html+='<td rowspan="'+(j-i+1)+'"><b>'+r.dateSes+'</b></td>';
+      html+='<td>'+r.pcode+'</td><td>'+r.scheme+'</td><td>'+r.subcode+'</td><td style="text-align:left">'+r.subname+'</td><td>'+r.strength+'</td>';
+      if(k===i)html+='<td rowspan="'+(j-i+1)+'"><b>'+tot+'</b></td>';
+      html+='</tr>';}
+    i=j+1;}
+  dweTable.innerHTML=html+'</table>';
+}
+
+/* ============ Duty allotment ============ */
+function buildInvDuties(){
+  if(!S.sessions.length){invTable.innerHTML='Import data first.';return;}
+  const staff=getStaff();
+  const C=S.sessions.length,R=staff.length;
+  if(!R){invTable.innerHTML='No staff in Setup.';return;}
+  const totalNeed=S.sessions.reduce((a,c)=>a+c.need,0);
+  const weights=staff.map(s=>s.rank),wSum=weights.reduce((a,b)=>a+b,0);
+  let target=weights.map(w=>Math.floor(totalNeed*w/wSum));
+  let leftover=totalNeed-target.reduce((a,b)=>a+b,0);
+  const juniorOrder=staff.map((s,i)=>i).sort((a,b)=>staff[b].rank-staff[a].rank);
+  for(let k=0;k<leftover;k++)target[juniorOrder[k%R]]++;
+  const maxRank=Math.max(...weights);
+  const grid=staff.map(()=>S.sessions.map(()=>0));
+  const assigned=staff.map(()=>0);
+  const slotCount=staff.map(()=>({}));
+  for(let c=0;c<C;c++){
+    const ses=S.sessions[c];
+    const prevSameDay=c>0&&S.sessions[c-1].date===ses.date?c-1:-1;
+    let need=ses.need;
+    while(need>0){
+      let best=-1,bestScore=Infinity;
+      for(let r=0;r<R;r++){
+        if(grid[r][c])continue;
+        if(!isAvail(staff[r].name,ses.date,ses.ses))continue;
+        if(assigned[r]>=target[r])continue;
+        const consec=prevSameDay>=0&&grid[r][prevSameDay]===1;
+        const rep=slotCount[r][ses.ses]||0;
+        const score=(assigned[r]/Math.max(target[r],1))*10+(consec?100:0)+rep*3+(maxRank-staff[r].rank)*0.5+Math.random()*0.3;
+        if(score<bestScore){bestScore=score;best=r;}
+      }
+      if(best<0){
+        for(let r=0;r<R;r++){
+          if(grid[r][c])continue;
+          if(!isAvail(staff[r].name,ses.date,ses.ses))continue;
+          const consec=prevSameDay>=0&&grid[r][prevSameDay]===1;
+          const sc=assigned[r]*10+(consec?100:0)+Math.random();
+          if(sc<bestScore){bestScore=sc;best=r;}
+        }
+      }
+      if(best<0)break;
+      grid[best][c]=1;assigned[best]++;slotCount[best][ses.ses]=(slotCount[best][ses.ses]||0)+1;need--;
+    }
+  }
+  S.invMatrix={cols:S.sessions,staff,grid,target};
+  renderInvDuties();
+}
+function renderInvDuties(){
+  const m=S.invMatrix;if(!m)return;
+  const C=m.cols.length;
+  let html='<table><tr><th colspan="'+(4+C+2)+'" class="printhead">'+stCollege.value+'</th></tr>';
+  html+='<tr><th colspan="'+(4+C+2)+'" class="printhead">'+stExam.value+' — INVIGILATION DUTY SHEET</th></tr>';
+  html+='<tr><th rowspan="3">S.No</th><th rowspan="3">Name</th><th rowspan="3">Design.</th><th rowspan="3" class="rankCol">Rank</th>';
+  m.cols.forEach(c=>html+='<th>'+c.date+'</th>');html+='<th rowspan="3" class="statCol">Target</th><th rowspan="3" class="statCol">Got</th></tr><tr>';
+  m.cols.forEach(c=>html+='<th>'+c.ses+'</th>');html+='</tr><tr class="statRow">';
+  m.cols.forEach(c=>html+='<th><small>need '+c.need+' (incl. 1 buffer)</small></th>');html+='</tr>';
+  m.staff.forEach((s,r)=>{
+    html+='<tr><td>'+(r+1)+'</td><td style="text-align:left">'+s.name+'</td><td>'+s.desig+'</td><td class="rankCol">'+s.rank+'</td>';
+    m.grid[r].forEach((v,c)=>html+='<td><input type="checkbox" data-r="'+r+'" data-c="'+c+'" '+(v?'checked':'')+' onchange="dutyEdit(this)"></td>');
+    html+='<td class="statCol">'+m.target[r]+'</td><td class="statCol" id="got'+r+'">'+m.grid[r].reduce((a,b)=>a+b,0)+'</td></tr>';});
+  html+='<tr class="statRow"><td colspan="3"><b>Allotted / Needed:</b></td><td class="rankCol"></td>';
+  m.cols.forEach((c,i)=>{const s=m.grid.reduce((a,row)=>a+row[i],0);html+='<td id="colTot'+i+'" class="'+(s===c.need?'okTot':'badTot')+'">'+s+'/'+c.need+'</td>';});
+  html+='<td colspan="2" class="statCol"></td></tr>';
+  invTable.innerHTML=html+'</table>';
+}
+function dutyEdit(cb){
+  const r=+cb.dataset.r,c=+cb.dataset.c,m=S.invMatrix;
+  m.grid[r][c]=cb.checked?1:0;
+  document.getElementById('got'+r).textContent=m.grid[r].reduce((a,b)=>a+b,0);
+  const s=m.grid.reduce((a,row)=>a+row[c],0);
+  const el=document.getElementById('colTot'+c);
+  el.textContent=s+'/'+m.cols[c].need;el.className=(s===m.cols[c].need?'okTot':'badTot');
+}
+
+function printInvDuties(){
+  const m=S.invMatrix;
+  if(!m){alert('Import data first.');return;}
+  const C=m.cols.length;
+  let t='<table><tr><th colspan="'+(3+C+1)+'" class="printhead">'+stCollege.value+'</th></tr>'
+    +'<tr><th colspan="'+(3+C+1)+'" class="printhead">'+stExam.value+' — INVIGILATION DUTY SHEET</th></tr>'
+    +'<tr><th rowspan="2">S.No</th><th rowspan="2">Name</th><th rowspan="2">Design.</th>';
+  m.cols.forEach(c=>t+='<th>'+c.date+'</th>');t+='<th rowspan="2">Total</th></tr><tr>';
+  m.cols.forEach(c=>t+='<th>'+c.ses+'</th>');t+='</tr>';
+  m.staff.forEach((s,r)=>{
+    t+='<tr><td>'+(r+1)+'</td><td style="text-align:left">'+s.name+'</td><td>'+s.desig+'</td>';
+    m.grid[r].forEach(v=>t+='<td>'+(v?'\u2713':'')+'</td>');
+    t+='<td><b>'+m.grid[r].reduce((a,b)=>a+b,0)+'</b></td></tr>';});
+  t+='<tr><td colspan="3"><b>Total per session</b></td>';
+  m.cols.forEach((c,i)=>t+='<td><b>'+m.grid.reduce((a,row)=>a+row[i],0)+'</b></td>');
+  t+='<td><b>'+m.grid.flat().reduce((a,b)=>a+b,0)+'</b></td></tr>';
+  t+='</table>';
+  const w=window.open('','_blank');
+  w.document.write('<html><head><title>Invigilation Duties</title><style>'
+    +'body{font-family:Segoe UI,Arial,sans-serif;margin:16px;}'
+    +'table{border-collapse:collapse;width:100%;font-size:12px;}'
+    +'th,td{border:1px solid #000;padding:4px 6px;text-align:center;white-space:nowrap;}'
+    +'th{background:#eef3fa;}.printhead{text-align:center;font-weight:bold;}'
+    +'</style></head><body>'+t+'</body></html>');
+  w.document.close();w.focus();setTimeout(()=>{w.print();w.close();},300);
+}
+/* ============ Session ============ */
+function fillDates(){
+  const dates=[...new Set(S.sessions.map(s=>s.date))];
+  selDate.innerHTML='<option value="">-- select --</option>'+dates.map(d=>'<option value="'+d+'">'+d+'</option>').join('');
+  selSes.innerHTML='';selTime.textContent='';
+}
+function fillSessions(){
+  const ses=S.sessions.filter(s=>s.date===selDate.value);
+  selSes.innerHTML=ses.map(s=>'<option value="'+s.ses+'">'+s.ses+'</option>').join('');showTime();
+}
+function showTime(){
+  const r=S.sessions.find(t=>t.date===selDate.value&&t.ses===selSes.value);
+  selTime.textContent=r?('Time: '+r.time+' | Strength: '+r.total+' | Invigilators needed (incl. buffer): '+r.need):'';
+  S.sel={date:selDate.value,ses:selSes.value,time:r?r.time:''};
+}
+function sessionData(date,ses){
+  const rowsHere=S.dayWise.filter(d=>d.date===date&&d.ses===ses);
+  const matched=[];
+  for(const r of rowsHere){
+    const pins=matchStudents(r.fullScheme,r.branch,r.sem,r.subcode).map(s=>s.pin);
+    if(pins.length)matched.push({header:r.fullScheme+'-'+r.branch+'-'+r.sem+'-'+r.subcode,sem:semKey(r.fullScheme+'-'+r.branch+'-'+r.sem),pins,meta:r});
+  }
+  return {rowsHere,matched};
+}
+function applySession(){
+  if(!S.sel.date||!S.sel.ses){sesMsg.textContent='Select date and session first.';sesMsg.className='msg err';return;}
+  const {rowsHere,matched}=sessionData(S.sel.date,S.sel.ses);
+  if(!matched.length){sesMsg.textContent='No subjects with students found for this date/session.';sesMsg.className='msg err';return;}
+  S.filtered=rowsHere;S.matched=matched;
+  frTable.innerHTML='<table><tr><th>Scheme</th><th>Branch</th><th>Semester</th><th>Subject Code</th><th>Subject Name</th><th>Strength</th></tr>'+rowsHere.map(f=>'<tr><td>'+f.fullScheme+'</td><td>'+f.branch+'</td><td>'+f.sem+'</td><td>'+f.subcode+'</td><td style="text-align:left">'+f.subname+'</td><td>'+f.strength+'</td></tr>').join('')+'</table>';
+  const maxr=Math.max(0,...matched.map(m=>m.pins.length));
+  let mh='<table><tr>'+matched.map(m=>'<th>'+m.header+' ('+m.pins.length+')</th>').join('')+'</tr>';
+  for(let i=0;i<maxr;i++){mh+='<tr>'+matched.map(m=>'<td>'+(m.pins[i]||'')+'</td>').join('')+'</tr>';}
+  mpTable.innerHTML=mh+'</table>';
+  allocateForSession();
+  sesMsg.textContent='Applied. '+matched.length+' groups, '+matched.reduce((a,m)=>a+m.pins.length,0)+' students. Check Tab 6.';
+  sesMsg.className='msg ok';go('rooms');
+}
+/* ============ Room allocation with saved plans ============ */
+function normSub(name){
+  let n=String(name||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  // user-declared equivalent subjects: any listed variant maps to the group's first entry
+  const eqLines=(typeof stEquiv!=='undefined'?stEquiv.value:'').split('\n').map(l=>l.trim()).filter(Boolean);
+  for(const line of eqLines){
+    const variants=line.split(',').map(x=>x.toLowerCase().replace(/[^a-z0-9]/g,'')).filter(Boolean);
+    if(variants.length>1&&variants.includes(n))return variants[0];
+  }
+  return n;
+}
+function groupsConflict(a,b){
+  if(!a||!b||a===b)return false;
+  // Rule 3: same BRANCH never shares a room (regardless of scheme/semester)
+  if(a.branch===b.branch)return true;
+  // Rule 1+2: same SUBJECT never shares a room (full code token, or name, or declared equivalents)
+  if(a.subKey&&b.subKey&&a.subKey===b.subKey)return true;
+  return false;
+}
+function subjectKey(subcode,subname){
+  const code=String(subcode||'').replace(/[^a-zA-Z0-9]/g,'').toUpperCase(); // full token e.g. SC301
+  const name=normSub(subname);
+  return code||name; // primary identity is the full code; name-normalization + equivalents handled in normSub
+}
+function autoAllocRows(matched,rooms){
+  const rows=matched.map(m=>({header:m.header,sem:m.sem,strength:m.pins.length,alloc:rooms.map(()=>0),fromPlan:false,
+    info:{branch:m.meta.branch,scheme:m.meta.fullScheme,subKey:subjectKey(m.meta.subcode,m.meta.subname),nsub:normSub(m.meta.subname)}}));
+  // treat identical normalized subject NAMES / equivalents as same subject too
+  rows.forEach(r=>{r.info.subKey=r.info.subKey+'|'+r.info.nsub;});
+  const nameKey={};rows.forEach(r=>{ // if two rows share nsub, unify their keys
+    if(nameKey[r.info.nsub])r.info.subKey=nameKey[r.info.nsub];else nameKey[r.info.nsub]=r.info.subKey;});
+  const usage=rooms.map(()=>0);
+  const roomInfos=rooms.map(()=>[]);
+  S.allocWarnings=[];
+  // 0) saved plans first
+  rows.forEach(row=>{
+    const plan=S.roomPlans[row.sem];
+    if(plan&&plan.length===rooms.length&&plan.reduce((a,b)=>a+b,0)===row.strength){
+      row.alloc=[...plan];row.fromPlan=true;
+      plan.forEach((v,c)=>{if(v>0){usage[c]+=v;roomInfos[c].push(row.info);}});
+    }
+  });
+  const st=rows.map((r,i)=>({i,blocks:r.fromPlan?0:Math.floor(r.strength/24),scrap:r.fromPlan?0:r.strength%24}));
+  // groups sorted by strength descending (Rule 4)
+  const order=st.filter(s=>!rows[s.i].fromPlan).sort((a,b)=>rows[b.i].strength-rows[a.i].strength);
+  const compat=(c,info)=>!roomInfos[c].some(g=>g!==info&&groupsConflict(g,info));
+  const put=(s,c,n)=>{rows[s.i].alloc[c]+=n;usage[c]+=n;if(!roomInfos[c].includes(rows[s.i].info))roomInfos[c].push(rows[s.i].info);};
+  // Rule 7: pack rooms one by one, left to right, each to FULL cap before moving on
+  for(let c=0;c<rooms.length;c++){
+    let free=rooms[c].cap-usage[c];
+    let progress=true;
+    while(free>0&&progress){
+      progress=false;
+      // (a) largest group with a 24-block remaining, compatible, not already in this room
+      if(free>=24){
+        const s=order.find(s=>s.blocks>0&&rows[s.i].alloc[c]===0&&compat(c,rows[s.i].info));
+        if(s){put(s,c,24);s.blocks--;free-=24;progress=true;continue;}
+      }
+      // (b) largest scrap that FITS FULLY (scrap eligible only after all its 24-blocks placed — Rule 5)
+      let cand=order.filter(s=>s.blocks===0&&s.scrap>0&&s.scrap<=free&&rows[s.i].alloc[c]===0&&compat(c,rows[s.i].info))
+                    .sort((a,b)=>b.scrap-a.scrap)[0];
+      if(cand){put(cand,c,cand.scrap);free-=cand.scrap;cand.scrap=0;progress=true;continue;}
+      // (c) largest scrap, PARTIAL fill, only to top the room up to exact cap
+      cand=order.filter(s=>s.blocks===0&&s.scrap>0&&rows[s.i].alloc[c]===0&&compat(c,rows[s.i].info))
+                .sort((a,b)=>b.scrap-a.scrap)[0];
+      if(cand){const add=Math.min(cand.scrap,free,24);put(cand,c,add);cand.scrap-=add;free-=add;progress=true;continue;}
+      // nothing compatible fits -> leave this room and move right (conflict rule is STRICT)
+    }
+  }
+  // Anything still unplaced: rules made it impossible -> place with explicit warning (never silently)
+  for(const s of order){
+    let rem=s.blocks*24+s.scrap;s.blocks=0;s.scrap=0;
+    for(let c=0;c<rooms.length&&rem>0;c++){
+      const free=rooms[c].cap-usage[c];
+      const add=Math.min(rem,free,24-rows[s.i].alloc[c]);
+      if(add>0){put(s,c,add);rem-=add;
+        S.allocWarnings.push(rows[s.i].header+': '+add+' students FORCED into '+rooms[c].name+' (conflict rules could not be satisfied)');}
+    }
+    if(rem>0)S.allocWarnings.push(rows[s.i].header+': '+rem+' students could NOT be placed (no room space left)');
+  }
+  return rows;
+}
+function allocateForSession(){
+  const rooms=getRooms();
+  S.roomAlloc={rooms,rows:autoAllocRows(S.matched,rooms)};
+  renderRoomInputs();
+  if(S.allocWarnings&&S.allocWarnings.length){
+    riMsg.innerHTML='<b>Allocation warnings (rules impossible to satisfy fully):</b><br>'+S.allocWarnings.join('<br>');
+    riMsg.className='msg err';
+  }
+}
+function renderRoomInputs(){
+  const {rooms,rows}=S.roomAlloc;
+  let html='<table><tr><th>Semester Group / Room</th><th>Strength</th>'+rooms.map(r=>'<th>'+r.name+'<br><small>cap '+r.cap+'</small></th>').join('')+'<th>Row Total</th><th>Plan</th></tr>';
+  rows.forEach((row,ri)=>{
+    html+='<tr><td style="text-align:left">'+row.header+'</td><td><b>'+row.strength+'</b></td>';
+    row.alloc.forEach((v,c)=>html+='<td><input type="number" min="0" style="width:52px" data-r="'+ri+'" data-c="'+c+'" value="'+(v||'')+'" oninput="cellEdit(this)"></td>');
+    html+='<td id="rt'+ri+'"><b>'+row.alloc.reduce((a,b)=>a+b,0)+'</b></td><td>'+(row.fromPlan?'💾 saved':'auto')+'</td></tr>';});
+  html+='<tr><td colspan="2"><b>Room Totals</b></td>'+rooms.map((_,c)=>'<td id="ct'+c+'"><b>'+rows.reduce((a,r)=>a+r.alloc[c],0)+'</b></td>').join('')+'<td colspan="2"><b>'+rows.reduce((a,r)=>a+r.strength,0)+'</b></td></tr>';
+  riTable.innerHTML=html+'</table>';
+  renderPlanList();
+}
+function cellEdit(inp){
+  const r=+inp.dataset.r,c=+inp.dataset.c,v=parseInt(inp.value)||0;
+  S.roomAlloc.rows[r].alloc[c]=v;
+  document.getElementById('rt'+r).innerHTML='<b>'+S.roomAlloc.rows[r].alloc.reduce((a,b)=>a+b,0)+'</b>';
+  const colTot=S.roomAlloc.rows.reduce((a,x)=>a+x.alloc[c],0);
+  const cap=S.roomAlloc.rooms[c].cap;
+  const ct=document.getElementById('ct'+c);
+  ct.innerHTML='<b>'+colTot+'</b>';
+  if(colTot>cap){
+    ct.style.background='#fdeaea';ct.style.color='#b02a2a';
+    inp.style.background='#fdeaea';inp.style.borderColor='#b02a2a';
+    riMsg.textContent='Room '+S.roomAlloc.rooms[c].name+' exceeded its capacity ('+colTot+' > '+cap+'). Reduce the highlighted cell.';
+    riMsg.className='msg err';
+  }else{
+    ct.style.background='';ct.style.color='';
+    inp.style.background='';inp.style.borderColor='';
+  }
+}
+/* S.savedSessions = [{label:'16/10/2025 FN', sems:[...]}] ; S.roomPlans keyed by sem for reuse */
+async function saveRoomPlan(){
+  if(!S.roomAlloc){riMsg.textContent='Apply a session first.';riMsg.className='msg err';return;}
+  const label=S.sel.date+' '+S.sel.ses;
+  const sems=[];
+  S.roomAlloc.rows.forEach(row=>{S.roomPlans[row.sem]=[...row.alloc];row.fromPlan=true;if(!sems.includes(row.sem))sems.push(row.sem);});
+  S.savedSessions=S.savedSessions||[];
+  const ex=S.savedSessions.find(s=>s.label===label);
+  if(ex)ex.sems=sems; else S.savedSessions.push({label,sems});
+  await store.set('room_plans',S.roomPlans);
+  await store.set('saved_sessions',S.savedSessions);
+  riMsg.textContent='Plans saved for: '+sems.join(', ');
+  riMsg.className='msg ok';renderRoomInputs();
+}
+function renderPlanList(){
+  const el=document.getElementById('planList');if(!el)return;
+  S.savedSessions=S.savedSessions||[];
+  if(!S.savedSessions.length){el.innerHTML='No session plans saved yet.';return;}
+  el.innerHTML=S.savedSessions.map((s,i)=>
+    '<div class="planItem" style="display:flex;justify-content:space-between;width:100%;margin:4px 0"><span><b>'+s.label+'</b> — Plans saved for: '+s.sems.join(', ')+'</span><button onclick="deletePlan('+i+')">✕ Delete</button></div>'
+  ).join('');
+}
+async function deletePlan(i){
+  const s=S.savedSessions[i];
+  // remove sem plans not used by other saved sessions
+  const others=new Set(S.savedSessions.filter((_,j)=>j!==i).flatMap(x=>x.sems));
+  s.sems.forEach(k=>{if(!others.has(k))delete S.roomPlans[k];});
+  S.savedSessions.splice(i,1);
+  await store.set('room_plans',S.roomPlans);
+  await store.set('saved_sessions',S.savedSessions);
+  renderPlanList();
+  if(S.roomAlloc)allocateForSession();
+}
+
+/* ============ Outputs ============ */
+function computeOutputs(date,ses,matched,rooms,rows,dutyRandom){
+  const display=[];const roomLists={};rooms.forEach(r=>roomLists[r.name]=[]);
+  rows.forEach((row,ri)=>{
+    const pins=matched[ri].pins;let idx=0;
+    row.alloc.forEach((n,c)=>{
+      if(n>0){
+        const slice=pins.slice(idx,idx+n);idx+=n;
+        display.push({scheme:row.header,hall:rooms[c].name,nos:n,from:slice[0],to:slice[slice.length-1]});
+        slice.forEach(p=>roomLists[rooms[c].name].push({scheme:row.header,pin:p}));
+      }});
+  });
+  const dutyRooms=[];
+  rooms.forEach((r,c)=>{const occ=rows.reduce((a,x)=>a+x.alloc[c],0);
+    if(occ>0){if(occ>24){dutyRooms.push(r.name+' (1)');dutyRooms.push(r.name+' (2)');}else dutyRooms.push(r.name);}});
+  let dutyStaff=[];
+  if(S.invMatrix){const ci=S.invMatrix.cols.findIndex(c=>c.date===date&&c.ses===ses);
+    if(ci>=0)S.invMatrix.staff.forEach((s,r)=>{if(S.invMatrix.grid[r][ci]===1)dutyStaff.push(s.name+', '+s.desig);});}
+  const duty=[];
+  if(dutyStaff.length){let cur=dutyRandom?Math.floor(dutyStaff.length*Math.random()):0;
+    dutyRooms.forEach(rm=>{duty.push({room:rm,fac:dutyStaff[cur%dutyStaff.length]});cur++;});
+    // leftover staff (buffer) listed as Reserve
+    const used=new Set(duty.map(d=>d.fac));
+    dutyStaff.filter(f=>!used.has(f)).forEach(f=>duty.push({room:'Reserve / Buffer',fac:f}));
+  }
+  else dutyRooms.forEach(rm=>duty.push({room:rm,fac:''}));
+  return {display,roomLists,duty};
+}
+function generateOutputs(){
+  if(!S.roomAlloc){riMsg.textContent='Apply a session first (Tab 5).';riMsg.className='msg err';return;}
+  const {rooms,rows}=S.roomAlloc;
+  for(const row of rows){const t=row.alloc.reduce((a,b)=>a+b,0);
+    if(t!==row.strength){riMsg.textContent='Row "'+row.header+'" total ('+t+') ≠ strength ('+row.strength+'). Fix it.';riMsg.className='msg err';return;}}
+  S.outputs=computeOutputs(S.sel.date,S.sel.ses,S.matched,rooms,rows,true);
+  renderOutputs();fillSeatRooms();generateAllSeating();
+  riMsg.textContent='Generated. See Tabs 7 and 8.';riMsg.className='msg ok';go('outputs');
+}
+function headBlock(cols){return '<tr><th colspan="'+cols+'" class="printhead">'+stCollege.value+'</th></tr><tr><th colspan="'+cols+'" class="printhead">'+stExam.value+'</th></tr><tr><th colspan="'+cols+'" class="printhead">Date: '+S.sel.date+' | Time: '+S.sel.time+' | Session: '+S.sel.ses+'</th></tr>';}
+function renderOutputs(){
+  const o=S.outputs;
+  let h=headBlock(6)+'<tr><th>S.No</th><th>Scheme</th><th>Hall</th><th>Nos</th><th>From</th><th>To</th></tr>';
+  o.display.forEach((d,i)=>h+='<tr style="font-weight:700"><td>'+(i+1)+'</td><td>'+d.scheme+'</td><td>'+d.hall+'</td><td>'+d.nos+'</td><td>'+d.from+'</td><td>'+d.to+'</td></tr>');
+  dbTable.innerHTML='<table>'+h+'</table>';
+  const names=Object.keys(o.roomLists).filter(n=>o.roomLists[n].length);
+  const maxr=Math.max(0,...names.map(n=>o.roomLists[n].length));
+  let rw='<table><tr>'+names.map(n=>'<th colspan="2">'+n+' ('+o.roomLists[n].length+')</th>').join('')+'</tr><tr>'+names.map(()=>'<th>S.No</th><th>Pin</th>').join('')+'</tr>';
+  for(let i=0;i<maxr;i++){rw+='<tr>'+names.map(n=>{const e=o.roomLists[n][i];return e?'<td>'+(i+1)+'</td><td>'+e.pin+'</td>':'<td></td><td></td>';}).join('')+'</tr>';}
+  rwTable.innerHTML=rw+'</table>';
+  let rd=headBlock(4)+'<tr><th>S.No</th><th>Room Name</th><th>Name of The Faculty</th><th>Signature of Faculty</th></tr>';
+  o.duty.forEach((d,i)=>rd+='<tr><td>'+(i+1)+'</td><td>'+d.room+'</td><td style="text-align:left">'+d.fac+'</td><td style="min-width:160px"></td></tr>');
+  rdTable.innerHTML='<table>'+rd+'</table>';
+  renderSlips();
+}
+/* ============ Bundle slip & Absentees statement — ONE per session ============ */
+function renderSlips(){
+  const toLines=stTo.value.replace(/\s{2,}/g,'\n').split(/\n|,\s*(?=[A-Z])/).map(x=>x.trim()).filter(Boolean).join('<br>');
+  bsTable.innerHTML=
+   '<div style="border:2px solid #000;padding:18px;max-width:940px;margin:auto;background:#fff">'
+   +'<table style="border:none" class="bslip">'
+   // Row 1
+   +'<tr><td style="border:none;width:22%"></td><td style="border:none;width:4%"></td>'
+   +'<td style="width:44%;font-weight:bold;text-align:center;font-size:14px">'+stBNPL.value+'</td>'
+   +'<td style="border:none;width:5%"></td>'
+   +'<td style="width:22%;font-weight:bold;text-align:center;font-size:14px">SPEED POST<br>STICKER</td></tr>'
+   // Row 2
+   +'<tr><td style="font-weight:bold">COLLEGE CODE</td><td style="border:none"></td>'
+   +'<td style="font-weight:bold;text-align:center">'+stBoard.value+'</td>'
+   +'<td style="border:none"></td><td style="border:none"></td></tr>'
+   // Row 3
+   +'<tr><td style="font-weight:bold;text-align:center">'+stCode.value+'</td><td style="border:none"></td>'
+   +'<td style="font-weight:bold;text-align:center">'+stExam.value+'</td>'
+   +'<td style="border:none"></td><td style="border:none"></td></tr>'
+   // Row 4
+   +'<tr><td style="font-weight:bold">DATE OF EXAM</td><td style="border:none"></td>'
+   +'<td rowspan="5" style="text-align:left;vertical-align:top;font-weight:bold;font-size:16px;line-height:1.7">'+toLines+'</td>'
+   +'<td style="border:none"></td><td style="border:none"></td></tr>'
+   // Row 5
+   +'<tr><td style="font-weight:bold;text-align:center">'+S.sel.date+'</td><td style="border:none"></td>'
+   +'<td style="border:none"></td><td style="font-weight:bold">COLLEGE CODE</td></tr>'
+   // Row 6
+   +'<tr><td style="font-weight:bold">EXAM TIMING</td><td style="border:none"></td>'
+   +'<td style="border:none"></td><td style="font-weight:bold;text-align:center">'+stCode.value+'</td></tr>'
+   // Row 7
+   +'<tr><td style="font-weight:bold;text-align:center;height:44px">'+S.sel.time+'</td><td style="border:none"></td>'
+   +'<td style="border:none"></td><td style="font-weight:bold">NO. OF SEALS</td></tr>'
+   // Row 8
+   +'<tr><td style="border:none;height:26px"></td><td style="border:none"></td>'
+   +'<td style="border:none"></td><td style="height:26px"></td></tr>'
+   // Spacer
+   +'<tr><td style="border:none;height:20px"></td><td style="border:none"></td><td style="border:none"></td><td style="border:none"></td><td style="border:none"></td></tr>'
+   // Principal
+   +'<tr><td style="font-weight:bold">PRINCIPAL PHONE NO</td><td style="border:none"></td><td style="border:none"></td><td style="border:none"></td><td style="border:none"></td></tr>'
+   +'<tr><td style="font-weight:bold;text-align:center">'+stPhone.value+'</td><td style="border:none"></td><td style="border:none"></td><td style="border:none"></td><td style="border:none"></td></tr>'
+   +'</table></div>';
+  asTable.innerHTML=
+   '<table style="max-width:640px;margin:auto">'
+   +'<tr><th colspan="2" class="printhead">'+stCollege.value+'</th></tr>'
+   +'<tr><th colspan="2" class="printhead">'+stExam.value+'</th></tr>'
+   +'<tr><th colspan="2" class="printhead">ABSENTEES STATEMENT</th></tr>'
+   +'<tr><td><b>Date Of Exam</b></td><td>'+S.sel.date+'</td></tr>'
+   +'<tr><td><b>Time Of Exam</b></td><td>'+S.sel.time+'</td></tr>'
+   +'<tr><td><b>Session Of Exam</b></td><td>'+S.sel.ses+'</td></tr>'
+   +'<tr><td><b>No Of Absentees</b></td><td style="min-width:150px;height:34px"></td></tr>'
+   +'</table>';
+}
+
+/* ============ SEATING ============ */
+const PATTERNS=[
+  ['GPTKGM','GPTKGM Phase-Shift — ABAB columns with pair-swap so no same group sits side by side'],
+  ['AAAA','AAAA — Column-wise blocks (same group per column)'],
+  ['ABAB','ABAB — Alternate two groups (adjacent differ)'],
+  ['ABCD','ABCD — Round-robin all groups'],
+  ['ROWWISE','Row-wise sequential (fill across rows)'],
+  ['SNAKE','Serpentine / Zigzag (alternate column direction)'],
+  ['CHECKER','Checkerboard (groups alternate like chess board)'],
+  ['DIAGONAL','Diagonal fill (spread along diagonals)'],
+  ['RANDOM','Random jumbling (full shuffle)']
+];
+S.seatCfg={};   // roomName -> {rows,cols,pattern}
+S.seatings={};  // roomName -> built seating
+function fillSeatRooms(){
+  const rooms=S.roomAlloc.rooms;
+  const names=Object.keys(S.outputs.roomLists).filter(n=>S.outputs.roomLists[n].length);
+  let h='<table><tr><th>Room</th><th>Students</th><th>Bench Rows</th><th>Bench Columns</th><th>Seating Type</th></tr>';
+  names.forEach(n=>{
+    const rm=rooms.find(r=>r.name===n);
+    const prev=S.seatCfg[n]||{};
+    S.seatCfg[n]={rows:rm.rows,cols:rm.cols,pattern:prev.pattern||'GPTKGM'}; // rows/cols always follow Setup
+    const cfg=S.seatCfg[n];
+    h+='<tr><td><b>'+n+'</b></td><td>'+S.outputs.roomLists[n].length+'</td>'
+      +'<td><input type="number" min="1" style="width:60px" value="'+cfg.rows+'" onchange="S.seatCfg[\''+n+'\'].rows=parseInt(this.value)||1"></td>'
+      +'<td><input type="number" min="1" style="width:60px" value="'+cfg.cols+'" onchange="S.seatCfg[\''+n+'\'].cols=parseInt(this.value)||1"></td>'
+      +'<td><select style="width:100%" onchange="S.seatCfg[\''+n+'\'].pattern=this.value">'
+      +PATTERNS.map(p=>'<option value="'+p[0]+'"'+(cfg.pattern===p[0]?' selected':'')+'>'+p[1]+'</option>').join('')
+      +'</select></td></tr>';
+  });
+  seatCfg.innerHTML=h+'</table>';
+}
+function buildSeating(roomName,pattern,rooms,roomLists,rOv,cOv){
+  const base=rooms.find(r=>r.name===roomName);
+  const room={name:base.name,cap:base.cap,rows:rOv||base.rows,cols:cOv||base.cols};
+  const occupants=roomLists[roomName]||[];
+  const benches=room.cols*room.rows;
+  const perBench=occupants.length>benches?2:1;
+  const groups={};occupants.forEach(o=>{(groups[o.scheme]=groups[o.scheme]||[]).push(o);});
+  const gNames=Object.keys(groups);
+  // ----- order of students -----
+  let order=[];
+  if(pattern==='RANDOM'){order=[...occupants];for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]];}}
+  else if(pattern==='AAAA'||pattern==='ROWWISE'||pattern==='SNAKE'||pattern==='DIAGONAL'){order=[...occupants];}
+  else if(pattern==='GPTKGM'){ // interleaved like ABAB; swap happens after seating
+    const qs=gNames.map(g=>[...groups[g]]);let gi=0;
+    while(order.length<occupants.length){
+      let placed=false;
+      for(let t=0;t<qs.length;t++){const q=qs[(gi+t)%qs.length];
+        if(q.length){order.push(q.shift());gi=(gi+t+1)%qs.length;placed=true;break;}}
+      if(!placed)break;
+    }
+  }
+  else{ // ABAB, ABCD, CHECKER -> interleaved round-robin
+    const qs=gNames.map(g=>[...groups[g]]);let gi=0;
+    while(order.length<occupants.length){
+      let placed=false;
+      for(let t=0;t<qs.length;t++){const q=qs[(gi+t)%qs.length];
+        if(q.length){order.push(q.shift());gi=(gi+t+1)%qs.length;placed=true;break;}}
+      if(!placed)break;
+    }
+  }
+  // ----- fill path: list of [r,c] bench positions in fill order -----
+  let path=[];
+  if(pattern==='ROWWISE'){for(let r=0;r<room.rows;r++)for(let c=0;c<room.cols;c++)path.push([r,c]);}
+  else if(pattern==='SNAKE'){for(let c=0;c<room.cols;c++){if(c%2===0){for(let r=0;r<room.rows;r++)path.push([r,c]);}else{for(let r=room.rows-1;r>=0;r--)path.push([r,c]);}}}
+  else if(pattern==='DIAGONAL'){for(let d=0;d<room.rows+room.cols-1;d++)for(let r=0;r<room.rows;r++){const c=d-r;if(c>=0&&c<room.cols)path.push([r,c]);}}
+  else if(pattern==='CHECKER'){ // even (r+c) benches first, then odd — with interleaved order, groups land like a chessboard
+    for(let par=0;par<2;par++)for(let c=0;c<room.cols;c++)for(let r=0;r<room.rows;r++)if((r+c)%2===par)path.push([r,c]);
+  }
+  else{for(let c=0;c<room.cols;c++)for(let r=0;r<room.rows;r++)path.push([r,c]);} // column-wise default (AAAA, ABAB, ABCD, RANDOM)
+  // ----- seat -----
+  const seats=[];
+  for(let r=0;r<room.rows;r++){seats.push([]);for(let c=0;c<room.cols;c++)seats[r].push([]);}
+  let k=0;
+  for(let pass=0;pass<perBench;pass++)
+    for(const [r,c] of path)
+      if(k<order.length&&seats[r][c].length===pass)seats[r][c].push(order[k++]);
+  if(pattern==='GPTKGM'){
+    // GPTKGM Phase-Shift: for every column after the first, whenever a student has a
+    // SAME-GROUP neighbour to the left, swap that vertical pair (front <-> behind).
+    for(let s=0;s<perBench;s++)
+      for(let c=1;c<room.cols;c++)
+        for(let r=0;r+1<room.rows;r+=2){
+          const a=seats[r][c][s],left=seats[r][c-1][s];
+          if(a&&left&&a.scheme===left.scheme){
+            const b=seats[r+1][c][s];
+            seats[r][c][s]=b;seats[r+1][c][s]=a;
+            // drop possible undefined holes
+            if(seats[r][c][s]===undefined)seats[r][c].splice(s,1);
+          }
+        }
+  }
+  return {room,seats,perBench,groups,occupants,pattern};
+}
+const GROUP_FONTS=[
+  {css:"font-family:Arial;",xl:{name:'Arial'}},
+  {css:"font-family:Georgia;font-style:italic;",xl:{name:'Georgia',italic:true}},
+  {css:"font-family:'Courier New';",xl:{name:'Courier New'}},
+  {css:"font-family:'Times New Roman';font-weight:bold;",xl:{name:'Times New Roman',bold:true}},
+  {css:"font-family:Verdana;font-style:italic;",xl:{name:'Verdana',italic:true}},
+  {css:"font-family:'Trebuchet MS';",xl:{name:'Trebuchet MS'}},
+  {css:"font-family:'Comic Sans MS';",xl:{name:'Comic Sans MS'}},
+  {css:"font-family:'Lucida Console';font-style:italic;",xl:{name:'Lucida Console',italic:true}}
+];
+function groupFontMap(groups){
+  const map={};Object.keys(groups).forEach((g,i)=>map[g]=GROUP_FONTS[i%GROUP_FONTS.length]);
+  return map;
+}
+function seatSerials(seat){
+  // EVERY pin gets its own serial number, running down each column (seat1 pass then seat2 pass column-wise)
+  const {room,seats,perBench}=seat;
+  const ser=[];let n=0;
+  for(let r=0;r<room.rows;r++){ser.push([]);for(let c=0;c<room.cols;c++)ser[r].push([]);}
+  for(let pass=0;pass<perBench;pass++)
+    for(let c=0;c<room.cols;c++)
+      for(let r=0;r<room.rows;r++)
+        if(seats[r][c][pass]!==undefined){n++;ser[r][c][pass]=n;}
+  return ser;
+}
+function seatingHTML(seat,editable){
+  const {room,seats,perBench,groups,occupants,pattern}=seat;
+  const ser=seatSerials(seat);
+  const fmap=groupFontMap(groups);
+  const perCol=perBench*2; // (sno+pin) per student
+  const totCols=room.cols*perCol+(room.cols-1);
+  let h='<table><tr><th colspan="'+totCols+'" class="printhead">'+stCollege.value+'</th></tr>'
+    +'<tr><th colspan="'+totCols+'" class="printhead">'+stExam.value+' — SEATING PLAN — ROOM: '+room.name+'</th></tr>'
+    +'<tr><th colspan="'+totCols+'" class="printhead">Date: '+S.sel.date+' | Time: '+S.sel.time+' | Session: '+S.sel.ses+(perBench===2?' | 2 per bench':'')+'</th></tr>';
+  h+='<tr>';
+  for(let c=0;c<room.cols;c++){
+    if(c>0)h+='<th style="border:none;background:none;width:14px"></th>';
+    for(let s=0;s<perBench;s++)h+='<th>S.No</th><th>Column '+(c+1)+(perBench===2?(s===0?' (L)':' (R)'):'')+'</th>';
+  }
+  h+='</tr>';
+  for(let r=0;r<room.rows;r++){
+    h+='<tr>';
+    for(let c=0;c<room.cols;c++){
+      if(c>0)h+='<td style="border:none"></td>';
+      const bench=seats[r][c];
+      for(let s=0;s<perBench;s++){
+        const o=bench[s];
+        h+='<td style="width:34px">'+(ser[r][c][s]??'')+'</td>';
+        if(!o)h+='<td>—</td>';
+        else{
+          const f=fmap[o.scheme]?fmap[o.scheme].css:'';
+          if(editable)h+='<td class="seatCell"><input type="text" style="'+f+'" value="'+o.pin+'" title="'+o.scheme+'"></td>';
+          else h+='<td style="'+f+'">'+o.pin+'</td>';
+        }
+      }
+    }
+    h+='</tr>';
+  }
+  h+='</table>';
+  // legend + summary
+  h+='<table style="margin-top:6px;max-width:820px"><tr><th colspan="6" class="printhead">Room '+room.name+' — Seating Summary</th></tr>'
+    +'<tr><th>S.No</th><th>Scheme (font sample)</th><th>Nos</th><th>Present</th><th>Absent</th><th style="min-width:80px">Total</th></tr>';
+  Object.keys(groups).forEach((g,i)=>{
+    const pins=groups[g].map(o=>o.pin);
+    const f=fmap[g].css;
+    h+='<tr><td>'+(i+1)+'</td><td style="text-align:left;'+f+'">'+g+'</td><td>'+pins.length+'</td><td style="min-width:70px"></td><td style="min-width:70px"></td><td></td></tr>';});
+  h+='<tr><td colspan="2"><b>Total</b></td><td><b>'+occupants.length+'</b></td><td></td><td></td><td></td></tr>';
+  h+='<tr><td colspan="6" style="text-align:left;vertical-align:top" class="signRow"><b>Invigilator(s) Signature:</b></td></tr></table>';
+  return h;
+}
+function generateAllSeating(){
+  if(!S.outputs){allSeats.innerHTML='Generate outputs first (Tab 6).';return;}
+  const names=Object.keys(S.outputs.roomLists).filter(n=>S.outputs.roomLists[n].length);
+  S.seatings={};
+  let h='';
+  names.forEach(n=>{
+    const cfg=S.seatCfg[n]||{rows:6,cols:4,pattern:'GPTKGM'};
+    S.seatings[n]=buildSeating(n,cfg.pattern,S.roomAlloc.rooms,S.outputs.roomLists,cfg.rows,cfg.cols);
+    h+='<div class="roomBlock" style="margin-bottom:26px">'+seatingHTML(S.seatings[n],true)+'</div>';
+  });
+  allSeats.innerHTML=h||'–';
+}
+function exportAllSeating(){
+  if(!Object.keys(S.seatings).length){alert('Generate seating first.');return;}
+  const ctx={date:S.sel.date,ses:S.sel.ses,time:S.sel.time,seating:S.seatings};
+  const wb=XLSX.utils.book_new();
+  Object.keys(S.seatings).forEach(rn=>{const ws=seatingSheet(rn,ctx);if(ws)XLSX.utils.book_append_sheet(wb,ws,('Seat_'+rn).slice(0,28));});
+  XLSX.writeFile(wb,'Seating_AllRooms_'+(S.sel.date||'').replace(/\//g,'-')+'_'+(S.sel.ses||'')+'.xlsx');
+}
+function printAllSeating(){
+  if(!Object.keys(S.seatings).length){alert('Generate seating first.');return;}
+  const w=window.open('','_blank');
+  let inner='';
+  Object.keys(S.seatings).forEach(rn=>{inner+='<div style="page-break-after:always">'+seatingHTML(S.seatings[rn],false)+'</div>';});
+  w.document.write('<html><head><title>Seating</title><style>'
+    +'body{font-family:Segoe UI,Arial,sans-serif;margin:16px;}'
+    +'table{border-collapse:collapse;font-size:12px;margin-bottom:8px;}'
+    +'th,td{border:1px solid #000;padding:5px 6px;text-align:center;white-space:nowrap;}'
+    +'th{background:#eef3fa;}.printhead{text-align:center;font-weight:bold;}.signRow{height:70px;white-space:normal;}'
+    +'</style></head><body>'+inner+'</body></html>');
+  w.document.close();w.focus();setTimeout(()=>{w.print();w.close();},300);
+}
+
+/* ================= STYLED EXCEL ================= */
+const BD={style:'thin',color:{rgb:'FF000000'}};
+const ALLB={top:BD,bottom:BD,left:BD,right:BD};
+const STY={
+  head:{font:{bold:true,sz:14},alignment:{horizontal:'center',vertical:'center',wrapText:true},border:ALLB},
+  th:{font:{bold:true,sz:11},fill:{fgColor:{rgb:'FFEEF3FA'}},alignment:{horizontal:'center',vertical:'center',wrapText:true},border:ALLB},
+  td:{font:{sz:11},alignment:{horizontal:'center',vertical:'center',wrapText:true},border:ALLB},
+  tdl:{font:{sz:11},alignment:{horizontal:'left',vertical:'center',wrapText:true},border:ALLB},
+  tdb:{font:{bold:true,sz:12},alignment:{horizontal:'center',vertical:'center',wrapText:true},border:ALLB}
+};
+function makeSheet(rows,colWidths,rowHeights){
+  const ws={};const merges=[];let R=0;let maxC=0;const occupied={};
+  rows.forEach(row=>{
+    let C=0;
+    row.cells.forEach(cell=>{
+      while(occupied[R+':'+C])C++; // skip columns covered by earlier rowspans
+      const span=cell.span||1,rspan=cell.rspan||1;
+      const cellObj={v:cell.v??'',t:typeof cell.v==='number'?'n':'s',s:cell.st||STY.td};
+      if(cell.f)cellObj.f=cell.f;
+      ws[XLSX.utils.encode_cell({r:R,c:C})]=cellObj;
+      for(let rr=0;rr<rspan;rr++)for(let cc=0;cc<span;cc++){
+        if(rr===0&&cc===0)continue;
+        ws[XLSX.utils.encode_cell({r:R+rr,c:C+cc})]={v:'',t:'s',s:cell.st||STY.td};
+        occupied[(R+rr)+':'+(C+cc)]=true;
+      }
+      if(span>1||rspan>1)merges.push({s:{r:R,c:C},e:{r:R+rspan-1,c:C+span-1}});
+      C+=span;
+    });
+    if(C>maxC)maxC=C;R++;
+  });
+  ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:R-1,c:Math.max(maxC-1,0)}});
+  ws['!merges']=merges;
+  ws['!cols']=(colWidths||Array(maxC).fill(14)).map(w=>({wch:w}));
+  ws['!rows']=rows.map((_,i)=>({hpt:(rowHeights&&rowHeights[i])||24}));
+  return ws;
+}
+function buildSheetFor(name,ctx){
+  ctx=ctx||{date:S.sel.date,ses:S.sel.ses,time:S.sel.time,matched:S.matched,rooms:S.roomAlloc?S.roomAlloc.rooms:getRooms(),rowsAlloc:S.roomAlloc?S.roomAlloc.rows:null,outputs:S.outputs};
+  const hd=(cols,extra)=>[
+    {cells:[{v:stCollege.value,span:cols,st:STY.head}]},
+    {cells:[{v:stExam.value+(extra?' — '+extra:''),span:cols,st:STY.head}]},
+    {cells:[{v:'Date: '+ctx.date+' | Time: '+ctx.time+' | Session: '+ctx.ses,span:cols,st:STY.head}]}
+  ];
+  if(name==='DayWiseExam'){
+    const rows=[{cells:[{v:stCollege.value,span:8,st:STY.head}]},{cells:[{v:stExam.value+' — DAY WISE STRENGTH',span:8,st:STY.head}]},
+      {cells:['S.No','Exam Date & Ses','Paper Code','Scheme','Subject Code','Subject Name','Strength','Total'].map(v=>({v,st:STY.th}))}];
+    let i=0;
+    while(i<S.dayWise.length){
+      let j=i;while(j+1<S.dayWise.length&&S.dayWise[j+1].dateSes===S.dayWise[i].dateSes)j++;
+      const tot=S.dayWise.slice(i,j+1).reduce((a,r)=>a+r.strength,0);
+      for(let k=i;k<=j;k++){const r=S.dayWise[k];
+        const cells=[{v:k+1}];
+        if(k===i)cells.push({v:r.dateSes,rspan:j-i+1,st:STY.tdb});
+        cells.push({v:r.pcode},{v:r.scheme},{v:r.subcode},{v:r.subname,st:STY.tdl},{v:r.strength});
+        if(k===i)cells.push({v:tot,rspan:j-i+1,st:STY.tdb});
+        rows.push({cells});}
+      i=j+1;}
+    return makeSheet(rows,[6,20,12,16,12,44,10,10]);
+  }
+  if(name==='InvDuties'&&S.invMatrix){
+    const m=S.invMatrix,C=m.cols.length,W=3+C+1; // + Total column at rightmost
+    const colL=i=>XLSX.utils.encode_col(3+i); // duty columns start at D (index 3)
+    const firstDataRow=5, lastDataRow=4+m.staff.length; // 1-based excel rows: data starts row 5
+    const rows=[
+      {cells:[{v:stCollege.value,span:W,st:STY.head}]},
+      {cells:[{v:stExam.value+' — INVIGILATION DUTY SHEET',span:W,st:STY.head}]},
+      {cells:[{v:'S.No',rspan:2,st:STY.th},{v:'Name',rspan:2,st:STY.th},{v:'Design.',rspan:2,st:STY.th},...m.cols.map(c=>({v:c.date,st:STY.th})),{v:'Total',rspan:2,st:STY.th}]},
+      {cells:[...m.cols.map(c=>({v:c.ses,st:STY.th}))]}
+    ];
+    m.staff.forEach((s,r)=>{
+      const excelRow=firstDataRow+r;
+      rows.push({cells:[{v:r+1},{v:s.name,st:STY.tdl},{v:s.desig},
+        ...m.grid[r].map(v=>({v:v?'\u2713':'',st:STY.tdb})),
+        {v:m.grid[r].reduce((a,b)=>a+b,0),f:'COUNTIF(D'+excelRow+':'+colL(C-1)+excelRow+',"\u2713")',st:STY.tdb}]});
+    });
+    rows.push({cells:[{v:'Total per session',span:3,st:STY.th},
+      ...m.cols.map((c,i)=>({v:m.grid.reduce((a,row)=>a+row[i],0),f:'COUNTIF('+colL(i)+firstDataRow+':'+colL(i)+lastDataRow+',"\u2713")',st:STY.tdb})),
+      {v:'',st:STY.tdb,f:'SUM(D'+(lastDataRow+1)+':'+colL(C-1)+(lastDataRow+1)+')'}]});
+    return makeSheet(rows,[6,24,12,...Array(C).fill(9),9]);
+  }
+
+  if(name==='Subjects'&&ctx.matched){
+    const rows=[...hd(6,'SUBJECTS IN SESSION'),
+      {cells:['Scheme','Branch','Semester','Subject Code','Subject Name','Strength'].map(v=>({v,st:STY.th}))}];
+    ctx.matched.forEach(m=>{const f=m.meta;
+      rows.push({cells:[{v:f.fullScheme},{v:f.branch},{v:f.sem},{v:f.subcode},{v:f.subname,st:STY.tdl},{v:m.pins.length}]});});
+    return makeSheet(rows,[10,10,12,14,44,10]);
+  }
+  if(name==='MatchedPins'&&ctx.matched){
+    const maxr=Math.max(0,...ctx.matched.map(m=>m.pins.length));
+    const rows=[{cells:ctx.matched.map(m=>({v:m.header+' ('+m.pins.length+')',st:STY.th}))}];
+    for(let i=0;i<maxr;i++)rows.push({cells:ctx.matched.map(m=>({v:m.pins[i]||''}))});
+    return makeSheet(rows,ctx.matched.map(()=>22));
+  }
+  if(name==='RoomInputs'&&ctx.rowsAlloc){
+    const rooms2=ctx.rooms,rr=ctx.rowsAlloc;
+    const W2=2+rooms2.length+1;
+    const rows=[...hd(W2,'ROOM INPUTS'),
+      {cells:[{v:'Semester Group / Room',st:STY.th},{v:'Strength',st:STY.th},...rooms2.map(r=>({v:r.name+' (cap '+r.cap+')',st:STY.th})),{v:'Row Total',st:STY.th}]}];
+    rr.forEach(row=>rows.push({cells:[{v:row.header,st:STY.tdl},{v:row.strength,st:STY.tdb},...row.alloc.map(v=>({v:v||''})),{v:row.alloc.reduce((a,b)=>a+b,0),st:STY.tdb}]}));
+    rows.push({cells:[{v:'Room Totals',span:2,st:STY.th},...rooms2.map((_,c)=>({v:rr.reduce((a,x)=>a+x.alloc[c],0),st:STY.tdb})),{v:rr.reduce((a,x)=>a+x.strength,0),st:STY.tdb}]});
+    return makeSheet(rows,[26,10,...rooms2.map(()=>9),10]);
+  }
+  const o=ctx.outputs;if(!o)return null;
+  if(name==='DisplayBoard'){
+    const rows=[...hd(6),{cells:['S.No','Scheme','Hall','Nos','From','To'].map(v=>({v,st:STY.th}))}];
+    o.display.forEach((d,i)=>rows.push({cells:[{v:i+1,st:STY.tdb},{v:d.scheme,st:STY.tdb},{v:d.hall,st:STY.tdb},{v:d.nos,st:STY.tdb},{v:d.from,st:STY.tdb},{v:d.to,st:STY.tdb}]}));
+    return makeSheet(rows,[6,30,10,8,16,16]);
+  }
+  if(name==='RoomWiseList'){
+    const names=Object.keys(o.roomLists).filter(n=>o.roomLists[n].length);
+    const maxr=Math.max(0,...names.map(n=>o.roomLists[n].length));
+    const rows=[...hd(names.length*2),{cells:names.map(n=>({v:n+' ('+o.roomLists[n].length+')',span:2,st:STY.th}))},{cells:names.flatMap(()=>[{v:'S.No',st:STY.th},{v:'Pin',st:STY.th}])}];
+    for(let i=0;i<maxr;i++){rows.push({cells:names.flatMap(n=>{const e=o.roomLists[n][i];return[{v:e?i+1:''},{v:e?e.pin:''}];})});}
+    return makeSheet(rows,names.flatMap(()=>[6,16]));
+  }
+  if(name==='RoomDuty'){
+    const rows=[...hd(4,'ROOM WISE DUTY SHEET'),{cells:['S.No','Room Name','Name of The Faculty','Signature of Faculty'].map(v=>({v,st:STY.th}))}];
+    o.duty.forEach((d,i)=>rows.push({cells:[{v:i+1},{v:d.room},{v:d.fac,st:STY.tdl},{v:''}]}));
+    return makeSheet(rows,[6,16,34,26],rows.map(()=>26));
+  }
+  if(name==='BundleSlip'){
+    const NB={font:{bold:true,sz:12},alignment:{horizontal:'center',vertical:'center',wrapText:true}}; // no border
+    const B={...NB,border:ALLB};
+    const BL={font:{bold:true,sz:14},alignment:{horizontal:'left',vertical:'top',wrapText:true},border:ALLB};
+    const MED={style:'medium',color:{rgb:'FF000000'}};
+    const fT={...NB,border:{top:MED}},fB={...NB,border:{bottom:MED}},fL={...NB,border:{left:MED}},fR={...NB,border:{right:MED}};
+    const fTL={...NB,border:{top:MED,left:MED}},fTR={...NB,border:{top:MED,right:MED}},fBL={...NB,border:{bottom:MED,left:MED}},fBR={...NB,border:{bottom:MED,right:MED}};
+    const toText='TO,\n'+stTo.value.replace(/^TO,?\s*/i,'').replace(/\s{2,}/g,'\n');
+    // cols: 0 frame | 1 labels | 2 gap | 3 center | 4 gap | 5 right | 6 frame
+    const rows=[
+      {cells:[{v:'',st:fTL},{v:'',st:fT},{v:'',st:fT},{v:'',st:fT},{v:'',st:fT},{v:'',st:fT},{v:'',st:fTR}]},
+      {cells:[{v:'',st:fL},{v:'',st:NB},{v:'',st:NB},{v:stBNPL.value,st:B},{v:'',st:NB},{v:'SPEED POST STICKER',st:B},{v:'',st:fR}]},
+      {cells:[{v:'',st:fL},{v:'COLLEGE CODE',st:B},{v:'',st:NB},{v:stBoard.value,st:B},{v:'',st:NB},{v:'',st:NB},{v:'',st:fR}]},
+      {cells:[{v:'',st:fL},{v:stCode.value,st:B},{v:'',st:NB},{v:stExam.value,st:B},{v:'',st:NB},{v:'',st:NB},{v:'',st:fR}]},
+      {cells:[{v:'',st:fL},{v:'DATE OF EXAM',st:B},{v:'',st:NB},{v:toText,rspan:5,st:BL},{v:'',st:NB},{v:'',st:NB},{v:'',st:fR}]},
+      {cells:[{v:'',st:fL},{v:ctx.date,st:B},{v:'',st:NB},{v:'',st:NB},{v:'COLLEGE CODE',st:B},{v:'',st:fR}]},
+      {cells:[{v:'',st:fL},{v:'EXAM TIMING',st:B},{v:'',st:NB},{v:'',st:NB},{v:stCode.value,st:B},{v:'',st:fR}]},
+      {cells:[{v:'',st:fL},{v:ctx.time,st:B},{v:'',st:NB},{v:'',st:NB},{v:'NO. OF SEALS',st:B},{v:'',st:fR}]},
+      {cells:[{v:'',st:fL},{v:'',st:NB},{v:'',st:NB},{v:'',st:NB},{v:'',st:B},{v:'',st:fR}]},
+      {cells:[{v:'',st:fL},{v:'',st:NB},{v:'',st:NB},{v:'',st:NB},{v:'',st:NB},{v:'',st:NB},{v:'',st:fR}]},
+      {cells:[{v:'',st:fL},{v:'PRINCIPAL PHONE NO',st:B},{v:'',st:NB},{v:'',st:NB},{v:'',st:NB},{v:'',st:NB},{v:'',st:fR}]},
+      {cells:[{v:'',st:fL},{v:stPhone.value,st:B},{v:'',st:NB},{v:'',st:NB},{v:'',st:NB},{v:'',st:NB},{v:'',st:fR}]},
+      {cells:[{v:'',st:fBL},{v:'',st:fB},{v:'',st:fB},{v:'',st:fB},{v:'',st:fB},{v:'',st:fB},{v:'',st:fBR}]}
+    ];
+    return makeSheet(rows,[3,24,3,44,3,20,3],[10,30,24,24,28,24,24,40,26,18,24,24,10]);
+  }
+  if(name==='AbsentSlip'){
+    const rows=[
+      {cells:[{v:stCollege.value,span:2,st:STY.head}]},
+      {cells:[{v:stExam.value,span:2,st:STY.head}]},
+      {cells:[{v:'ABSENTEES STATEMENT',span:2,st:STY.head}]},
+      {cells:[{v:'Date Of Exam',st:STY.th},{v:ctx.date}]},
+      {cells:[{v:'Time Of Exam',st:STY.th},{v:ctx.time}]},
+      {cells:[{v:'Session Of Exam',st:STY.th},{v:ctx.ses}]},
+      {cells:[{v:'No Of Absentees',st:STY.th},{v:''}]}
+    ];
+    return makeSheet(rows,[24,34],[26,26,26,26,26,26,34]);
+  }
+  return null;
+}
+function seatingSheet(roomName,ctx){
+  const seat=ctx.seating[roomName];if(!seat)return null;
+  const {room,seats,perBench,groups,occupants,pattern}=seat;
+  const ser=seatSerials(seat);
+  const fmap=groupFontMap(groups);
+  const NB={font:{sz:11},alignment:{horizontal:'center',vertical:'center'}};
+  const perCol=perBench*2;
+  const totCols=room.cols*perCol+(room.cols-1);
+  const gSty=g=>({font:{sz:11,...(fmap[g]?fmap[g].xl:{})},alignment:{horizontal:'center',vertical:'center'},border:ALLB});
+  const rows=[
+    {cells:[{v:stCollege.value,span:totCols,st:STY.head}]},
+    {cells:[{v:stExam.value+' — SEATING PLAN — ROOM '+room.name,span:totCols,st:STY.head}]},
+    {cells:[{v:'Date: '+ctx.date+' | Time: '+ctx.time+' | Session: '+ctx.ses+(perBench===2?' | 2 per bench':''),span:totCols,st:STY.head}]}
+  ];
+  const hdr=[];
+  for(let c=0;c<room.cols;c++){
+    if(c>0)hdr.push({v:'',st:NB});
+    for(let s=0;s<perBench;s++){hdr.push({v:'S.No',st:STY.th});hdr.push({v:'Column '+(c+1)+(perBench===2?(s===0?' (L)':' (R)'):''),st:STY.th});}
+  }
+  rows.push({cells:hdr});
+  for(let r=0;r<room.rows;r++){
+    const cells=[];
+    for(let c=0;c<room.cols;c++){
+      if(c>0)cells.push({v:'',st:NB});
+      const bench=seats[r][c];
+      for(let s=0;s<perBench;s++){
+        const o=bench[s];
+        cells.push({v:ser[r][c][s]??'',st:STY.tdb});
+        cells.push(o?{v:o.pin,st:gSty(o.scheme)}:{v:'—',st:STY.td});
+      }
+    }
+    rows.push({cells});
+  }
+  rows.push({cells:[{v:'',span:totCols,st:NB}]});
+  rows.push({cells:[{v:'Seating Summary — Room '+room.name,span:totCols,st:STY.head}]});
+  rows.push({cells:[{v:'S.No',st:STY.th},{v:'Scheme',span:Math.max(totCols-5,1),st:STY.th},{v:'Nos',st:STY.th},{v:'Present',st:STY.th},{v:'Absent',st:STY.th},{v:'Total',st:STY.th}]});
+  Object.keys(groups).forEach((g,i)=>{const pins=groups[g].map(o=>o.pin);
+    const fs={...gSty(g),alignment:{horizontal:'left',vertical:'center'}};
+    rows.push({cells:[{v:i+1},{v:g,span:Math.max(totCols-5,1),st:fs},{v:pins.length},{v:''},{v:''},{v:''}]});});
+  rows.push({cells:[{v:'Total',span:Math.max(totCols-4,1),st:STY.tdb},{v:occupants.length,st:STY.tdb},{v:''},{v:''},{v:''}]});
+  const heights=rows.map(()=>24);
+  rows.push({cells:[{v:'Invigilator(s) Signature:',span:totCols,st:{...STY.tdl,alignment:{horizontal:'left',vertical:'top'}}}]});
+  heights.push(70);
+  const widths=[];
+  for(let c=0;c<room.cols;c++){if(c>0)widths.push(2.5);for(let s=0;s<perBench;s++){widths.push(6);widths.push(15);}}
+  return makeSheet(rows,widths,heights);
+}
+function exportOne(name){
+  let ws=null,fname=name;
+  ws=buildSheetFor(name);
+  if(!ws){alert('Nothing to export yet.');return;}
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,name.slice(0,28));
+  XLSX.writeFile(wb,fname+'_'+(S.sel.date||'').replace(/\//g,'-')+'_'+(S.sel.ses||'')+'.xlsx');
+}
+/* One workbook per session — all sheets inside */
+function sessionWorkbook(ctx){
+  const wb=XLSX.utils.book_new();
+  const add=(ws,n)=>{if(ws)XLSX.utils.book_append_sheet(wb,ws,n.slice(0,28));};
+  add(buildSheetFor('Subjects',ctx),'Subjects');
+  add(buildSheetFor('MatchedPins',ctx),'MatchedPins');
+  add(buildSheetFor('RoomInputs',ctx),'RoomInputs');
+  add(buildSheetFor('DisplayBoard',ctx),'DisplayBoard');
+  add(buildSheetFor('RoomWiseList',ctx),'RoomWiseList');
+  add(buildSheetFor('RoomDuty',ctx),'RoomDuty');
+  Object.keys(ctx.seating||{}).forEach(rn=>add(seatingSheet(rn,ctx),'Seat_'+rn));
+  add(buildSheetFor('BundleSlip',ctx),'BundleSlip');
+  add(buildSheetFor('AbsentSlip',ctx),'AbsentSlip');
+  return wb;
+}
+function currentCtx(){
+  const seating={};
+  if(S.outputs)Object.keys(S.outputs.roomLists).filter(n=>S.outputs.roomLists[n].length).forEach(rn=>{
+    seating[rn]=S.seatings[rn]||buildSeating(rn,(S.seatCfg[rn]||{}).pattern||'ABAB',S.roomAlloc.rooms,S.outputs.roomLists,(S.seatCfg[rn]||{}).rows,(S.seatCfg[rn]||{}).cols);
+  });
+  return {date:S.sel.date,ses:S.sel.ses,time:S.sel.time,matched:S.matched,rooms:S.roomAlloc.rooms,rowsAlloc:S.roomAlloc.rows,outputs:S.outputs,seating};
+}
+function exportSessionWorkbook(){
+  if(!S.outputs){alert('Generate outputs first (Tab 6).');return;}
+  const wb=sessionWorkbook(currentCtx());
+  XLSX.writeFile(wb,(S.sel.date||'').replace(/\//g,'-')+'_'+(S.sel.ses||'')+'_ALL_SHEETS.xlsx');
+}
+/* ============ Print one section only ============ */
+function printSection(id){
+  const el=document.getElementById(id);
+  if(!el||!el.innerHTML.trim()||el.innerHTML.trim()==='–'){alert('Nothing to print yet.');return;}
+  const w=window.open('','_blank');
+  // work on a clone so screen table is untouched
+  const clone=el.cloneNode(true);
+  clone.querySelectorAll('.rankCol,.statCol,.statRow').forEach(x=>x.remove());
+  clone.querySelectorAll('[rowspan="3"]').forEach(x=>x.setAttribute('rowspan','2'));
+  w.document.write('<html><head><title>Print</title><style>'
+    +'body{font-family:Segoe UI,Arial,sans-serif;margin:20px;}'
+    +'table{border-collapse:collapse;font-size:12px;}'
+    +'th,td{border:1px solid #000;padding:4px 6px;text-align:center;white-space:nowrap;}'
+    +'th{background:#eef3fa;}'
+    +'td[style*="border:none"],th[style*="border:none"]{border:none!important;}'
+    +'.printhead{text-align:center;font-weight:bold;}'
+    +'input{border:none;background:none;font-size:12px;text-align:center;width:auto;}'
+    +'input[type=checkbox]{appearance:none;width:14px;height:14px;}'
+    +'.signRow{height:70px;}'
+    +'</style></head><body>'+clone.innerHTML+'</body></html>');
+  // convert checked checkboxes to tick text
+  w.document.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+    const t=w.document.createTextNode(cb.checked?'\u2713':'');cb.replaceWith(t);});
+  // convert text/number inputs to plain text
+  w.document.querySelectorAll('input').forEach(inp=>{const t=w.document.createTextNode(inp.value||'');inp.replaceWith(t);});
+  w.document.close();w.focus();
+  setTimeout(()=>{w.print();w.close();},300);
+}
+/* ============ Export subjects + matched pins (2 sheets, 1 file) ============ */
+function exportSubjectsPins(){
+  if(!S.filtered.length){alert('Apply a session first.');return;}
+  const wb=XLSX.utils.book_new();
+  const sub=[...( [
+    {cells:[{v:stCollege.value,span:6,st:STY.head}]},
+    {cells:[{v:stExam.value+' — SUBJECTS IN SESSION',span:6,st:STY.head}]},
+    {cells:[{v:'Date: '+S.sel.date+' | Time: '+S.sel.time+' | Session: '+S.sel.ses,span:6,st:STY.head}]},
+    {cells:['Scheme','Branch','Semester','Subject Code','Subject Name','Strength'].map(v=>({v,st:STY.th}))}
+  ])];
+  S.filtered.forEach(f=>sub.push({cells:[{v:f.fullScheme},{v:f.branch},{v:f.sem},{v:f.subcode},{v:f.subname,st:STY.tdl},{v:f.strength}]}));
+  XLSX.utils.book_append_sheet(wb,makeSheet(sub,[10,10,12,14,44,10]),'Subjects');
+  const maxr=Math.max(0,...S.matched.map(m=>m.pins.length));
+  const mp=[{cells:S.matched.map(m=>({v:m.header+' ('+m.pins.length+')',st:STY.th}))}];
+  for(let i=0;i<maxr;i++)mp.push({cells:S.matched.map(m=>({v:m.pins[i]||''}))});
+  XLSX.utils.book_append_sheet(wb,makeSheet(mp,S.matched.map(()=>22)),'MatchedPins');
+  XLSX.writeFile(wb,'Subjects_Pins_'+(S.sel.date||'').replace(/\//g,'-')+'_'+(S.sel.ses||'')+'.xlsx');
+}
+/* ============ Master ZIP ============ */
+async function masterExport(){
+  if(!S.sessions.length){meMsg.textContent='Import data first.';meMsg.className='msg err';return;}
+  // ---- verify every session's scheme-groups have SAVED room plans ----
+  // (FN/AN sessions sharing the same scheme-groups automatically share the same saved plan,
+  //  since plans are keyed per scheme-branch-semester group)
+  const missing=[];
+  for(const ses of S.sessions){
+    const {matched}=sessionData(ses.date,ses.ses);
+    const miss=matched.filter(m=>{
+      const plan=S.roomPlans[m.sem];
+      return !(plan&&plan.reduce((a,b)=>a+b,0)===m.pins.length);
+    }).map(m=>m.sem);
+    if(miss.length)missing.push(ses.date+' '+ses.ses+' → '+[...new Set(miss)].join(', '));
+  }
+  if(missing.length){
+    const ok=confirm('These sessions/scheme-groups have NO saved seating plan yet:\n\n'
+      +missing.join('\n')
+      +'\n\nPress OK to AUTO-ALLOT them now and export everything.\nPress Cancel to go back, plan them manually in Tab 6, save, and export again.');
+    if(!ok){meMsg.textContent='Export cancelled. Plan the listed sessions in Tab 6 (Room Inputs), save them, then export.';meMsg.className='msg err';go('rooms');return;}
+  }
+  meMsg.textContent='Generating… please wait.';meMsg.className='msg ok';
+  try{
+    const zip=new JSZip();
+    const rooms=getRooms();
+    const root=zip.folder((stExam.value||'Exam').replace(/[\\/:*?"<>|]/g,'-'));
+    const wbArr=(ws,n)=>{const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,n.slice(0,28));return XLSX.write(wb,{type:'array',bookType:'xlsx'});};
+    root.file('DayWiseExam.xlsx',wbArr(buildSheetFor('DayWiseExam'),'DayWiseExam'));
+    if(S.invMatrix)root.file('InvDuties.xlsx',wbArr(buildSheetFor('InvDuties'),'InvDuties'));
+    for(const ses of S.sessions){
+      const {matched}=sessionData(ses.date,ses.ses);
+      if(!matched.length)continue;
+      const rowsAlloc=autoAllocRows(matched,rooms);
+      const outputs=computeOutputs(ses.date,ses.ses,matched,rooms,rowsAlloc,false);
+      const seating={};
+      Object.keys(outputs.roomLists).filter(n=>outputs.roomLists[n].length).forEach(rn=>{
+        const cfg=S.seatCfg[rn]||{};
+        seating[rn]=buildSeating(rn,cfg.pattern||'GPTKGM',rooms,outputs.roomLists,cfg.rows,cfg.cols);
+      });
+      const ctx={date:ses.date,ses:ses.ses,time:ses.time,matched,rooms,rowsAlloc,outputs,seating};
+      const wb=sessionWorkbook(ctx);
+      const fold=root.folder((ses.date+' '+ses.ses).replace(/\//g,'-'));
+      fold.file((ses.date+' '+ses.ses).replace(/\//g,'-')+'.xlsx',XLSX.write(wb,{type:'array',bookType:'xlsx'}));
+    }
+    const blob=await zip.generateAsync({type:'blob'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+    a.download=(stExam.value||'Exam').replace(/[\\/:*?"<>|]/g,'-')+'_ALL.zip';a.click();
+    meMsg.textContent='Done! ZIP downloaded.';meMsg.className='msg ok';
+  }catch(e){meMsg.textContent='Error: '+e.message;meMsg.className='msg err';console.error(e);}
+}
+</script>
+</body>
+</html>
