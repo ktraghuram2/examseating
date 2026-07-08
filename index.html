@@ -1144,7 +1144,10 @@ function buildSeating(roomName,pattern,rooms,roomLists,rOv,cOv){
     for(let c=0;c<room.cols;c++)
       for(let s=0;s<perBench;s++)
         for(let r=0;r<room.rows;r++){
-          const parity=(r+s)%2;
+          // 2-per-bench: parity = (r+s)%2 (unchanged, keeps the correct bench pattern).
+          // 1-per-bench: add column index so adjacent columns start with opposite groups
+          //              -> no same group side by side across columns.
+          const parity=(perBench===2)?((r+s)%2):((r+c)%2);
           const stu=takeFrom(parity);
           if(stu){while(seats[r][c].length<s)seats[r][c].push(null);seats[r][c][s]=stu;}
         }
@@ -1156,6 +1159,10 @@ function buildSeating(roomName,pattern,rooms,roomLists,rOv,cOv){
       if(perBench===2&&scheme(r,c,1-s)===me)return true;       // benchmate (front/behind same bench)
       if(r>0&&scheme(r-1,c,s)===me)return true;                // above same bench-column
       if(r+1<room.rows&&scheme(r+1,c,s)===me)return true;      // below same bench-column
+      if(perBench===1){                                        // single-seat: also check side columns
+        if(c>0&&scheme(r,c-1,s)===me)return true;
+        if(c+1<room.cols&&scheme(r,c+1,s)===me)return true;
+      }
       return false;};
     const flat=[];for(let r=0;r<room.rows;r++)for(let c=0;c<room.cols;c++)for(let s=0;s<perBench;s++)if(seats[r][c][s])flat.push({r,c,s});
     for(let g=0;g<flat.length*flat.length;g++){let v=null;for(const q of flat)if(bad(q.r,q.c,q.s)){v=q;break;}if(!v)break;let done=false;
