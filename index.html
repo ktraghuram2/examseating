@@ -776,7 +776,16 @@ function applySession(){
   sesMsg.textContent='Applied. '+matched.length+' groups, '+matched.reduce((a,m)=>a+m.pins.length,0)+' students. Check Tab 6.';
   sesMsg.className='msg ok';go('rooms');
 }
-/* ============ Room allocation with saved plans ============ */
+/* ============ Room allocation — v6 ALGORITHM (3-phase, strict-first two-pass) ============
+   Rule hierarchy (anti-copying):
+     HARD : same SUBJECT never shares a room filled above half capacity.
+     SOFT : same BRANCH (different subjects) avoided; used ONLY when a fully
+            strict plan cannot seat everyone (last resort) and every such
+            allotment is highlighted + listed (seniors may hint juniors).
+     A scheme never takes more than capacity/2 in one room; rooms never
+     exceed capacity; rooms at/under half seat one per bench (any mix OK).
+   Phases per room: 1) Pairing (two half-blocks, compatible)  2) Standalone
+   (one half-block)  3) Scrap consolidation (dynamic clash rule).           */
 function normSub(name){
   let n=String(name||'').toLowerCase().replace(/[^a-z0-9]/g,'');
   // user-declared equivalent subjects: any listed variant maps to the group's first entry
@@ -787,95 +796,198 @@ function normSub(name){
   }
   return n;
 }
-function groupsConflict(a,b){
-  if(!a||!b||a===b)return false;
-  // Rule 3: same BRANCH never shares a room (regardless of scheme/semester)
-  if(a.branch===b.branch)return true;
-  // Rule 1+2: same SUBJECT never shares a room (full code token, or name, or declared equivalents)
-  if(a.subKey&&b.subKey&&a.subKey===b.subKey)return true;
-  return false;
-}
 function subjectKey(subcode,subname){
-  const code=String(subcode||'').replace(/[^a-zA-Z0-9]/g,'').toUpperCase(); // full token e.g. SC301
+  const code=String(subcode||'').replace(/[^a-zA-Z0-9]/g,'').toUpperCase();
   const name=normSub(subname);
-  return code||name; // primary identity is the full code; name-normalization + equivalents handled in normSub
+  return code||name;
+}
+function strictOk(a,b){return a.branch!==b.branch&&a.subKey!==b.subKey;}
+function relaxedOk(a,b){return a.subKey!==b.subKey;}
+/* rows: [{header,strength,info:{branch,subKey,subLabel},fromPlan,planAlloc}] ; rooms: [{name,cap}] */
+function solvePass(rows,rooms,allowRelaxed){
+  const R=rooms.length;
+  const alloc=rows.map(r=>{
+    if(r.fromPlan){const a=(r.planAlloc||[]).slice(0,R);while(a.length<R)a.push(0);return a;}
+    return rooms.map(()=>0);
+  });
+  const remaining=rows.map(r=>r.fromPlan?0:r.strength);
+  const contents=rooms.map((_,c)=>rows.map((r,ri)=>ri).filter(ri=>alloc[ri][c]>0));
+  const usage=rooms.map((_,c)=>rows.reduce((a,r,ri)=>a+alloc[ri][c],0));
+  const violations=[];
+  const logV=(c,a,b)=>violations.push({room:rooms[c].name,aIdx:a,bIdx:b,a:rows[a].header,b:rows[b].header,
+    branch:rows[a].info.branch,subjects:rows[a].info.subLabel+' / '+rows[b].info.subLabel});
+  for(let c=0;c<R;c++){
+    const RC=rooms[c].cap,B=Math.floor(RC/2);
+    let total=usage[c];
+    const cont=contents[c];
+    const idxs=rows.map((_,i)=>i);
+    // Phase 1: Pairing — two whole B-blocks, largest-remaining first
+    if(total===0&&B>0){
+      const bySize=idxs.slice().sort((x,y)=>remaining[y]-remaining[x]);
+      const a=bySize.find(i=>remaining[i]>=B);
+      if(a!==undefined){
+        let b=bySize.find(i=>i!==a&&remaining[i]>=B&&strictOk(rows[a].info,rows[i].info));
+        let relaxedUsed=false;
+        if(b===undefined&&allowRelaxed){
+          b=bySize.find(i=>i!==a&&remaining[i]>=B&&relaxedOk(rows[a].info,rows[i].info));
+          relaxedUsed=b!==undefined;
+        }
+        if(b!==undefined){
+          alloc[a][c]+=B;alloc[b][c]+=B;remaining[a]-=B;remaining[b]-=B;
+          total=2*B;cont.push(a,b);
+          if(relaxedUsed)logV(c,a,b);
+        }
+      }
+    }
+    // Phase 2: Standalone — one whole B-block
+    if(total===0&&B>0){
+      const bySize=idxs.slice().sort((x,y)=>remaining[y]-remaining[x]);
+      const a=bySize.find(i=>remaining[i]>=B);
+      if(a!==undefined){alloc[a][c]+=B;remaining[a]-=B;total=B;cont.push(a);}
+    }
+    // Phase 3: Scrap consolidation — strict pick first, relaxed only if allowed
+    while(total<RC){
+      const cands=idxs.filter(i=>remaining[i]>0).sort((x,y)=>remaining[y]-remaining[x]);
+      if(!cands.length)break;
+      const pick=(rule)=>{
+        let best=-1,bestFit=0;
+        for(const i of cands){
+          const space=RC-total;
+          const limit=total===0?B:space;
+          let fit=Math.min(remaining[i],limit,space);
+          if(fit<=0)continue;
+          if(total+fit>B){
+            if(cont.some(o=>o!==i&&!rule(rows[i].info,rows[o].info)))continue;
+            if(alloc[i][c]+fit>B){fit=B-alloc[i][c];if(fit<=0)continue;}
+          }
+          if(fit>bestFit){bestFit=fit;best=i;}
+        }
+        return [best,bestFit];
+      };
+      let [best,fit]=pick(strictOk);
+      let relaxed=false;
+      if(best<0&&allowRelaxed){[best,fit]=pick(relaxedOk);relaxed=best>=0;}
+      if(best<0)break;
+      if(relaxed&&total+fit>B){
+        for(const o of cont)
+          if(o!==best&&rows[o].info.branch===rows[best].info.branch)logV(c,o,best);
+      }
+      alloc[best][c]+=fit;remaining[best]-=fit;total+=fit;
+      if(!cont.includes(best))cont.push(best);
+    }
+    usage[c]=total;
+  }
+  const unseated=remaining.reduce((a,b)=>a+b,0);
+  const invig=rooms.reduce((a,r,c)=>a+(usage[c]>Math.floor(r.cap/2)?2:(usage[c]>0?1:0)),0);
+  return {alloc,remaining,usage,violations,unseated,invig,roomsUsed:usage.filter(u=>u>0).length};
+}
+/* Two-pass: strict only; same-branch fallback ONLY if strict cannot seat everyone */
+function runSeatingSolve(rows,rooms){
+  const strict=solvePass(rows,rooms,false);
+  if(strict.unseated===0)return strict;
+  return solvePass(rows,rooms,true);
+}
+/* Rule-aware estimate: how many MORE rooms (most common capacity) are still required */
+function estimateExtraRooms(rows,rooms,maxExtra){
+  maxExtra=maxExtra||200;
+  const freq={};let std=48,bestN=0;
+  rooms.forEach(r=>{freq[r.cap]=(freq[r.cap]||0)+1;if(freq[r.cap]>bestN){bestN=freq[r.cap];std=r.cap;}});
+  for(let extra=1;extra<=maxExtra;extra++){
+    const trial=rooms.concat(Array.from({length:extra},(_,i)=>({name:'EXTRA-'+(i+1),cap:std})));
+    if(runSeatingSolve(rows,trial).unseated===0)return {extra,std};
+  }
+  return {extra:null,std};
 }
 function autoAllocRows(matched,rooms){
   const rows=matched.map(m=>({header:m.header,sem:m.sem,strength:m.pins.length,alloc:rooms.map(()=>0),fromPlan:false,
-    info:{branch:m.meta.branch,scheme:m.meta.fullScheme,subKey:subjectKey(m.meta.subcode,m.meta.subname),nsub:normSub(m.meta.subname)}}));
-  // treat identical normalized subject NAMES / equivalents as same subject too
+    info:{branch:m.meta.branch,scheme:m.meta.fullScheme,subKey:subjectKey(m.meta.subcode,m.meta.subname),nsub:normSub(m.meta.subname),subLabel:m.meta.subcode}}));
+  // identical normalized subject NAMES / declared equivalents count as the same subject
   rows.forEach(r=>{r.info.subKey=r.info.subKey+'|'+r.info.nsub;});
-  const nameKey={};rows.forEach(r=>{ // if two rows share nsub, unify their keys
+  const nameKey={};rows.forEach(r=>{
     if(nameKey[r.info.nsub])r.info.subKey=nameKey[r.info.nsub];else nameKey[r.info.nsub]=r.info.subKey;});
-  const usage=rooms.map(()=>0);
-  const roomInfos=rooms.map(()=>[]);
-  S.allocWarnings=[];
-  // 0) saved plans first
+  // saved plans applied first (kept exactly; not re-solved)
   rows.forEach(row=>{
     const plan=S.roomPlans[row.sem];
     if(plan&&plan.length===rooms.length&&plan.reduce((a,b)=>a+b,0)===row.strength){
-      row.alloc=[...plan];row.fromPlan=true;
-      plan.forEach((v,c)=>{if(v>0){usage[c]+=v;roomInfos[c].push(row.info);}});
+      row.fromPlan=true;row.planAlloc=[...plan];
     }
   });
-  const st=rows.map((r,i)=>({i,blocks:r.fromPlan?0:Math.floor(r.strength/24),scrap:r.fromPlan?0:r.strength%24}));
-  // groups sorted by strength descending (Rule 4)
-  const order=st.filter(s=>!rows[s.i].fromPlan).sort((a,b)=>rows[b.i].strength-rows[a.i].strength);
-  const compat=(c,info)=>!roomInfos[c].some(g=>g!==info&&groupsConflict(g,info));
-  const put=(s,c,n)=>{rows[s.i].alloc[c]+=n;usage[c]+=n;if(!roomInfos[c].includes(rows[s.i].info))roomInfos[c].push(rows[s.i].info);};
-  // Rule 7: pack rooms one by one, left to right, each to FULL cap before moving on
-  for(let c=0;c<rooms.length;c++){
-    let free=rooms[c].cap-usage[c];
-    let progress=true;
-    while(free>0&&progress){
-      progress=false;
-      // (a) largest group with a 24-block remaining, compatible, not already in this room
-      if(free>=24){
-        const s=order.find(s=>s.blocks>0&&rows[s.i].alloc[c]===0&&compat(c,rows[s.i].info));
-        if(s){put(s,c,24);s.blocks--;free-=24;progress=true;continue;}
-      }
-      // (b) largest scrap that FITS FULLY (scrap eligible only after all its 24-blocks placed — Rule 5)
-      let cand=order.filter(s=>s.blocks===0&&s.scrap>0&&s.scrap<=free&&rows[s.i].alloc[c]===0&&compat(c,rows[s.i].info))
-                    .sort((a,b)=>b.scrap-a.scrap)[0];
-      if(cand){put(cand,c,cand.scrap);free-=cand.scrap;cand.scrap=0;progress=true;continue;}
-      // (c) largest scrap, PARTIAL fill, only to top the room up to exact cap
-      cand=order.filter(s=>s.blocks===0&&s.scrap>0&&rows[s.i].alloc[c]===0&&compat(c,rows[s.i].info))
-                .sort((a,b)=>b.scrap-a.scrap)[0];
-      if(cand){const add=Math.min(cand.scrap,free,24);put(cand,c,add);cand.scrap-=add;free-=add;progress=true;continue;}
-      // nothing compatible fits -> leave this room and move right (conflict rule is STRICT)
-    }
-  }
-  // Anything still unplaced: rules made it impossible -> place with explicit warning (never silently)
-  for(const s of order){
-    let rem=s.blocks*24+s.scrap;s.blocks=0;s.scrap=0;
-    for(let c=0;c<rooms.length&&rem>0;c++){
-      const free=rooms[c].cap-usage[c];
-      const add=Math.min(rem,free,24-rows[s.i].alloc[c]);
-      if(add>0){put(s,c,add);rem-=add;
-        S.allocWarnings.push(rows[s.i].header+': '+add+' students FORCED into '+rooms[c].name+' (conflict rules could not be satisfied)');}
-    }
-    if(rem>0)S.allocWarnings.push(rows[s.i].header+': '+rem+' students could NOT be placed (no room space left)');
+  const res=runSeatingSolve(rows,rooms);
+  rows.forEach((row,ri)=>{row.alloc=res.alloc[ri];});
+  S.allocResult=res;
+  S.allocViolations=res.violations;
+  S.allocWarnings=[];
+  if(res.unseated>0){
+    rows.forEach((row,ri)=>{
+      if(res.remaining[ri]>0)
+        S.allocWarnings.push(row.header+' (branch '+row.info.branch+', subject '+row.info.subLabel+'): '+res.remaining[ri]+' students NOT placed');
+    });
   }
   return rows;
+}
+function allocSummaryHTML(rooms,rows,res){
+  const seated=rows.reduce((a,r)=>a+r.strength,0)-res.unseated;
+  const total=rows.reduce((a,r)=>a+r.strength,0);
+  let h='<table style="margin-top:10px"><tr><th style="text-align:left;background:#d7e3ff">KEY POINTS FOLLOWED IN THIS ALLOCATION</th></tr>';
+  h+='<tr><td style="text-align:left">1. No same SUBJECT in a room filled above half capacity (two per bench) — prevents direct copying. Declared equivalent subjects count as the same subject.</td></tr>';
+  h+='<tr><td style="text-align:left">2. No same BRANCH in a room filled above half capacity — prevents senior-junior hinting. Used only as a LAST RESORT when a fully strict plan cannot seat everyone; every such case is highlighted red and listed below.</td></tr>';
+  h+='<tr><td style="text-align:left">3. A scheme never occupies more than half of any room; a room never exceeds its capacity. Rooms at/under half capacity seat one student per bench, so any schemes may share.</td></tr>';
+  h+='<tr><td style="text-align:left;background:#fff3e0"><b>Number of invigilators: '+res.invig+'</b> (2 per room above half capacity, 1 per room at/under half)</td></tr>';
+  h+='<tr><td style="text-align:left;background:#eef3ff"><b>Number of students allotted: '+seated+' / '+total+'</b></td></tr>';
+  h+='<tr><td style="text-align:left;background:'+(res.unseated?'#fdeaea':'#e6f6ec')+'"><b>Remaining (unallotted) students: '+res.unseated+'</b></td></tr>';
+  h+='<tr><td style="text-align:left"><b>Rooms used: '+res.roomsUsed+' of '+rooms.length+'</b> | Total capacity: '+rooms.reduce((a,r)=>a+r.cap,0)+'</td></tr>';
+  if(res.violations.length){
+    h+='<tr><td style="text-align:left;background:#ffb3b3"><b>⚠ SAME-BRANCH ALLOTMENTS (LAST RESORT): '+res.violations.length+'</b> — strict plan could not seat all students; subjects differ, but post extra vigilance in these rooms</td></tr>';
+    res.violations.forEach((v,i)=>{
+      h+='<tr><td style="text-align:left;background:#ffd6d6">'+(i+1)+'. Room '+v.room+': '+v.a+'  +  '+v.b+' | branch '+v.branch+' (same), subjects '+v.subjects+' (different) | reason: no clash-free combination left</td></tr>';
+    });
+  }else{
+    h+='<tr><td style="text-align:left;background:#e6f6ec"><b>✔ No same-branch allotments</b> — every shared full room mixes different branches AND different subjects.</td></tr>';
+  }
+  if(S.allocWarnings&&S.allocWarnings.length){
+    h+='<tr><td style="text-align:left;background:#fdeaea"><b>⚠ UNALLOTTED:</b><br>'+S.allocWarnings.join('<br>')+'</td></tr>';
+  }
+  return h+'</table>';
 }
 function allocateForSession(){
   const rooms=getRooms();
   S.roomAlloc={rooms,rows:autoAllocRows(S.matched,rooms)};
   renderRoomInputs();
-  if(S.allocWarnings&&S.allocWarnings.length){
-    riMsg.innerHTML='<b>Allocation warnings (rules impossible to satisfy fully):</b><br>'+S.allocWarnings.join('<br>');
+  const res=S.allocResult;
+  if(res&&res.unseated>0){
+    const est=estimateExtraRooms(S.roomAlloc.rows.map(r=>({header:r.header,strength:r.strength,fromPlan:r.fromPlan,planAlloc:r.planAlloc,info:r.info})),rooms);
+    const need=est.extra===null
+      ?'Could not seat everyone even with 200 extra rooms — please check the input data.'
+      :('Rooms still required: '+est.extra+' more room(s) of capacity '+est.std+' (calculated with the same branch/subject rules).');
+    riMsg.innerHTML='<b>'+res.unseated+' student(s) could NOT be allotted.</b><br>'+S.allocWarnings.join('<br>')+'<br><b>'+need+'</b>';
     riMsg.className='msg err';
+    alert(res.unseated+' student(s) could NOT be allotted with the current rooms.\n\nRemaining students by scheme:\n'
+      +S.allocWarnings.map(w=>'  • '+w).join('\n')+'\n\n'+need);
+  }else if(res&&res.violations.length){
+    riMsg.innerHTML='<b>All students seated, but '+res.violations.length+' same-branch allotment(s) were unavoidable (last resort).</b> See the red rows in the summary below the table.';
+    riMsg.className='msg err';
+  }else{
+    riMsg.textContent='All students seated with zero rule violations.';
+    riMsg.className='msg ok';
   }
 }
 function renderRoomInputs(){
   const {rooms,rows}=S.roomAlloc;
+  const res=S.allocResult;
+  const violCells=new Set();
+  if(res)res.violations.forEach(v=>{violCells.add(v.aIdx+'|'+rooms.findIndex(r=>r.name===v.room));violCells.add(v.bIdx+'|'+rooms.findIndex(r=>r.name===v.room));});
   let html='<table><tr><th>Semester Group / Room</th><th>Strength</th>'+rooms.map(r=>'<th>'+r.name+'<br><small>cap '+r.cap+'</small></th>').join('')+'<th>Row Total</th><th>Plan</th></tr>';
   rows.forEach((row,ri)=>{
     html+='<tr><td style="text-align:left">'+row.header+'</td><td><b>'+row.strength+'</b></td>';
-    row.alloc.forEach((v,c)=>html+='<td><input type="number" min="0" style="width:52px" data-r="'+ri+'" data-c="'+c+'" value="'+(v||'')+'" oninput="cellEdit(this)"></td>');
+    row.alloc.forEach((v,c)=>{
+      const viol=violCells.has(ri+'|'+c)&&v>0;
+      html+='<td'+(viol?' style="background:#ffd6d6"':'')+'><input type="number" min="0" style="width:52px'+(viol?';background:#ffd6d6;border-color:#b02a2a;font-weight:700':'')+'" data-r="'+ri+'" data-c="'+c+'" value="'+(v||'')+'" oninput="cellEdit(this)"></td>';
+    });
     html+='<td id="rt'+ri+'"><b>'+row.alloc.reduce((a,b)=>a+b,0)+'</b></td><td>'+(row.fromPlan?'💾 saved':'auto')+'</td></tr>';});
   html+='<tr><td colspan="2"><b>Room Totals</b></td>'+rooms.map((_,c)=>'<td id="ct'+c+'"><b>'+rows.reduce((a,r)=>a+r.alloc[c],0)+'</b></td>').join('')+'<td colspan="2"><b>'+rows.reduce((a,r)=>a+r.strength,0)+'</b></td></tr>';
-  riTable.innerHTML=html+'</table>';
+  html+='</table>';
+  if(res)html+=allocSummaryHTML(rooms,rows,res);
+  riTable.innerHTML=html;
   renderPlanList();
 }
 function cellEdit(inp){
