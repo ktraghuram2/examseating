@@ -50,6 +50,7 @@ async function saveSetup(){
     stMsg.textContent="Setup saved permanently (this browser). Rooms: "+getRooms().length+", Staff: "+getStaff().length;
     stMsg.className="msg ok";
     hdrExam.textContent=stExam.value;
+    
     // If sessions exist...
     if(S.sessions.length) {
         if(S.invMatrix) {
